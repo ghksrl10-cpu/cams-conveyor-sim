@@ -539,9 +539,10 @@ function render(){
     const groupCT=span>1
       ? s.rows.slice(i,i+span).reduce((a,row)=>a+(row.ct||0),0)
       : r.ct;
+    const effectivePitch=pitch*span; // 다공정: 작업자 허용시간 = 공피치 × 공정 수
     const realCT=groupCT>0?groupCT/(r.workers||1):0;
-    const load=realCT>0?realCT/pitch*100:0;
-    const slackPct=realCT>0?((pitch-realCT)/pitch*100).toFixed(1):null;
+    const load=realCT>0?realCT/effectivePitch*100:0;
+    const slackPct=realCT>0?((effectivePitch-realCT)/effectivePitch*100).toFixed(1):null;
     let ctCls='';
     if(!r.empty&&realCT>0)ctCls=realCT>pitch?'ng-c':load>85?'warn-c':'ok-c';
     const emC=r.empty?'empty-c':'',offC=r.empty?'off':'';
