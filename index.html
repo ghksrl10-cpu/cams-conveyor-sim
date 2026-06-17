@@ -332,7 +332,6 @@
               <th style="width:42px">공백</th>
               <th style="width:76px">C/T(초)</th>
               <th style="width:64px">인원</th>
-              <th style="width:64px">병렬</th>
               <th style="width:86px">실C/T(초)</th>
               <th style="width:76px">여유율</th>
               <th style="min-width:120px;text-align:left;padding-left:6px">체결 수량</th>
@@ -393,11 +392,11 @@ const _C3T='카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초
 const _C3F='너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA';
 const _C3N='토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것';
 const DEF_CPAD=[
-  {name:'111',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:5},
-  {name:'121',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0},
-  {name:'131',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0},
-  {name:'141',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0},
-  {name:'142',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0},
+  {name:'111',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:5, workerSpan:5},
+  {name:'121',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0},
+  {name:'131',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0},
+  {name:'141',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0},
+  {name:'142',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0},
   {name:'151',              task:'클러스터, 오디오',                      group:'',    fastener:'', note:'', empty:false},
   {name:'152',              task:'패드부착, AVN 조립',                    group:'',    fastener:'', note:'', empty:false},
   {name:'161',              task:'퓨즈커버 조립, 글러브 박스 조립',        group:'',    fastener:'', note:'', empty:false},
@@ -535,7 +534,7 @@ function render(){
   const tbody=document.getElementById('mainBody');
   tbody.innerHTML='';
   s.rows.forEach((r,i)=>{
-    const realCT=r.ct>0?r.ct/(r.parallel||1)/(r.workers||1):0;
+    const realCT=r.ct>0?r.ct/(r.workers||1):0;
     const load=realCT>0?realCT/pitch*100:0;
     const slackPct=realCT>0?((pitch-realCT)/pitch*100).toFixed(1):null;
     let ctCls='';
@@ -550,8 +549,7 @@ function render(){
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${r.taskSpan>1?`rowspan="${r.taskSpan}" style="vertical-align:middle"`:''}><textarea rows="${r.taskSpan>1?4:2}" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
       <td style="background:${r.empty?'#1a1040':'var(--hd2)'};text-align:center"><input type="checkbox" ${r.empty?'checked':''} onchange="toggleEmpty(${i},this.checked)"></td>
       <td class="${r.empty?'off':ctCls}"><input type="number" value="${r.ct||''}" min="0" step="0.1" oninput="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0"></td>
-      <td class="${offC}"><input type="number" value="${r.workers}" min="1" oninput="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>
-      <td class="${offC}"><input type="number" value="${r.parallel}" min="1" oninput="updNum(${i},'parallel',+this.value)" ${r.empty?'disabled':''}></td>
+      ${r.workerSpan===0?'':`<td class="${offC}" ${r.workerSpan>1?`rowspan="${r.workerSpan}" style="vertical-align:middle;text-align:center"`:''}><input type="number" value="${r.workers}" min="1" oninput="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>`}
       <td class="val ${r.empty?'off':ctCls}" style="color:${r.empty?'var(--mut)':''}">${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>
       <td class="val" style="color:${slColor}">${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${r.taskSpan>1?`rowspan="${r.taskSpan}" style="vertical-align:middle"`:''}><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>`}
@@ -563,7 +561,7 @@ function render(){
 function upd(i,k,v){G().rows[i][k]=v;}
 function updNum(i,k,v){G().rows[i][k]=v||0;render();}
 function toggleEmpty(i,v){G().rows[i].empty=v;render();}
-function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,parallel:1,group:'',fastener:'',note:''});render();}
+function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:''});render();}
 function delRow(i){if(!confirm('삭제하시겠습니까?'))return;G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();}
 function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[curLine][curSub]={rows:makeRows(curLine,curSub)};render();}
 
@@ -578,7 +576,7 @@ function runSim(){
   const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
   const active=s.rows.filter(r=>!r.empty&&r.ct>0);
   if(!active.length){alert('C/T가 입력된 유효 공정이 없습니다.');return;}
-  const res=active.map(r=>{const rt=r.ct/(r.parallel||1)/(r.workers||1);return{...r,realCT:rt,load:rt/pitch*100,isBN:rt>pitch};});
+  const res=active.map(r=>{const rt=r.ct/(r.workers||1);return{...r,realCT:rt,load:rt/pitch*100,isBN:rt>pitch};});
   const bn=res.reduce((a,b)=>a.realCT>b.realCT?a:b);
   const lbEff=res.reduce((a,r)=>a+r.realCT,0)/(bn.realCT*res.length)*100;
   const actU=Math.round(3600/bn.realCT),daily=Math.floor(wm*60/bn.realCT);
@@ -610,14 +608,14 @@ function runSim(){
 
   html+=`<div class="sec"><div class="sec-h">📋 공정 상세</div><div class="scroll"><table><thead><tr>
     <th>컨베어</th><th>공정명</th><th style="text-align:left;padding-left:8px">공정작업</th>
-    <th>C/T</th><th>인원</th><th>병렬</th><th>실C/T</th><th>부하율</th><th>여유시간</th><th>상태</th>
+    <th>C/T</th><th>인원</th><th>실C/T</th><th>부하율</th><th>여유시간</th><th>상태</th>
   </tr></thead><tbody>`;
   res.forEach(r=>{
     const slk=(pitch-r.realCT).toFixed(1),sc=r.isBN?'ng-c':r.load>85?'warn-c':'ok-c';
     html+=`<tr>
       <td style="font-weight:800;color:var(--blue)">${r.conv}</td><td style="font-weight:700">${esc(r.name)}</td>
       <td style="text-align:left;padding:0 8px">${esc(r.task||'')}</td>
-      <td>${r.ct}초</td><td>${r.workers}명</td><td>${r.parallel}</td>
+      <td>${r.ct}초</td><td>${r.workers}명</td>
       <td style="font-weight:700">${r.realCT.toFixed(1)}초</td>
       <td class="${sc}" style="font-weight:700;padding:0 6px">${r.load.toFixed(1)}%</td>
       <td style="font-weight:700;color:${+slk>=0?'var(--ok)':'var(--ng)'}">${slk}초</td>
