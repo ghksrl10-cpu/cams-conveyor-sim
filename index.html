@@ -375,22 +375,25 @@ const LINE_DEF=[
   {name:'함평',subs:['FRT','RR']},
   {name:'전주',subs:['FRT','RR']},
 ];
+const _A='카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초크BRKT, 라디어 파워선, 하네스, 에탁스, 피에조 부저, 전장모듈, PAS 유닛, TPMS, C/PAD 조립, 에어택 토크 조립';
+const _AF='너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA';
+const _AN='토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것';
 const DEF_LINE12=[
-  {name:'111', task:'', group:'A', fastener:'', note:'', empty:false},
-  {name:'121', task:'', group:'A', fastener:'', note:'', empty:false},
-  {name:'131', task:'', group:'A', fastener:'', note:'', empty:false},
-  {name:'141', task:'', group:'A', fastener:'', note:'', empty:false},
-  {name:'142', task:'', group:'A', fastener:'', note:'', empty:false},
-  {name:'151', task:'', group:'',  fastener:'', note:'', empty:false},
-  {name:'152', task:'', group:'',  fastener:'', note:'', empty:false},
-  {name:'161', task:'', group:'',  fastener:'', note:'', empty:false},
-  {name:'171', task:'', group:'',  fastener:'', note:'', empty:false},
-  {name:'181', task:'', group:'',  fastener:'', note:'', empty:true},
-  {name:'191', task:'', group:'',  fastener:'', note:'', empty:false},
-  {name:'에어백 서브1',     task:'', group:'SUB', fastener:'', note:'', empty:false},
-  {name:'센터페시아 서브1', task:'', group:'SUB', fastener:'', note:'', empty:false},
-  {name:'SUB1',             task:'', group:'SUB', fastener:'', note:'', empty:false},
-  {name:'SUB2',             task:'', group:'SUB', fastener:'', note:'', empty:false},
+  {name:'111', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'121', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'131', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'141', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'142', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'151', task:'클러스터, 오디오',                     group:'', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'152', task:'패드부착, AVN 조립',                   group:'', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'161', task:'퓨즈커버 조립, 글러브 박스 조립',       group:'', fastener:'', note:'이종, 누락 미체결 없을 것',                  empty:false},
+  {name:'171', task:'센터페시아 조립',                       group:'', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'181', task:'',                                      group:'', fastener:'', note:'', empty:true},
+  {name:'191', task:'전장검사',                              group:'', fastener:'', note:'NG 없을 것',                                 empty:false},
+  {name:'에어백 서브1',     task:'에어백 조립',                        group:'SUB', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'센터페시아 서브1', task:'클러스터 페시아, 스위치, 에어덕트',   group:'SUB', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'SUB1',             task:'에어덕트, USB 모듈',                 group:'SUB', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'SUB2',             task:'AVN BRKT, LTE 모듈 (AVN 사양)',      group:'SUB', fastener:'', note:'누락, 미체결, 바코드 스캔 누락 없을 것',       empty:false},
 ];
 const DEF_CPAD=[
   {name:'CON1',   task:'카울바, 전장모듈, 하네스, C/PAD 조립', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것', empty:false},
