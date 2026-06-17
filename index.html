@@ -389,22 +389,25 @@ const DEF_LINE12=[
   {name:'181', task:'', group:'',  fastener:'', note:'', empty:false},
   {name:'191', task:'', group:'',  fastener:'', note:'', empty:false},
 ];
+const _C3T='카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초크BRKT, 라디어 파워선, 하네스, 에탁스, 피에조 부저, 전장모듈, 하네스, PAS 유닛, TPMS, IBU, 에어택 토크 조립, C/PAD 조립, 포토센서, 오토라이트';
+const _C3F='너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA';
+const _C3N='토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것';
 const DEF_CPAD=[
-  {name:'111',          task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A',   fastener:'', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것', empty:false},
-  {name:'121',          task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A',   fastener:'', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것', empty:false},
-  {name:'131',          task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A',   fastener:'', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것', empty:false},
-  {name:'141',          task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A',   fastener:'', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것', empty:false},
-  {name:'142',          task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A',   fastener:'', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것', empty:false},
-  {name:'151',          task:'클러스터 및 헤드 유닛, 커넥터 체결',   group:'',    fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것',          empty:false},
-  {name:'152',          task:'AVN/패드 부착 및 퓨즈박스 조립',       group:'',    fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것',          empty:false},
-  {name:'161',          task:'클로브 박스 조립 및 퓨즈박스 조립',     group:'',    fastener:'', note:'이종, 누락 미체결 없을 것',                            empty:false},
-  {name:'171',          task:'클러스터페시아 조립',                   group:'',    fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것',          empty:false},
-  {name:'181',          task:'',                                       group:'',    fastener:'', note:'',                                                     empty:true},
-  {name:'191',          task:'전장 검사',                             group:'',    fastener:'', note:'NG 없을 것',                                           empty:false},
-  {name:'에어백 서브1', task:'에어백',                                group:'SUB', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것',          empty:false},
-  {name:'센터페시아 서브1', task:'클러스터 페시아, 스위치, 에어덕트', group:'SUB', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것',          empty:false},
-  {name:'SUB1',         task:'에어덕트, USB 모듈',                    group:'SUB', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것',          empty:false},
-  {name:'SUB2',         task:'AVN BRKT, LTE 모듈 (AVN 사양)',         group:'SUB', fastener:'', note:'누락, 미체결, 바코드 스캔 누락 없을 것',               empty:false},
+  {name:'111',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:5},
+  {name:'121',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0},
+  {name:'131',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0},
+  {name:'141',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0},
+  {name:'142',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0},
+  {name:'151',              task:'클러스터, 오디오',                      group:'',    fastener:'', note:'', empty:false},
+  {name:'152',              task:'패드부착, AVN 조립',                    group:'',    fastener:'', note:'', empty:false},
+  {name:'161',              task:'퓨즈커버 조립, 글러브 박스 조립',        group:'',    fastener:'', note:'', empty:false},
+  {name:'171',              task:'센터페시아 조립',                        group:'',    fastener:'', note:'', empty:false},
+  {name:'181',              task:'',                                       group:'',    fastener:'', note:'', empty:true},
+  {name:'191',              task:'전장검사',                               group:'',    fastener:'', note:'', empty:false},
+  {name:'에어백 서브1',     task:'에어백 조립',                            group:'SUB', fastener:'', note:'', empty:false},
+  {name:'센터페시아 서브1', task:'클러스터 페시아, 스위치, 에어덕트',      group:'SUB', fastener:'', note:'', empty:false},
+  {name:'SUB1',             task:'에어덕트, USB 모듈',                     group:'SUB', fastener:'', note:'', empty:false},
+  {name:'SUB2',             task:'AVN BRKT, LTE 모듈 (AVN 사양)',          group:'SUB', fastener:'', note:'', empty:false},
 ];
 function makeRows(li,si){
   if(li<2) // 조립 1·2라인
@@ -544,15 +547,15 @@ function render(){
       <td class="rowlab">${r.conv}</td>
       <td class="${emC}"><input value="${esc(r.name)}" oninput="upd(${i},'name',this.value)" style="font-weight:700"></td>
       <td class="${emC}"><input value="${esc(r.group||'')}" oninput="upd(${i},'group',this.value)" placeholder="—" style="text-align:center;font-weight:700;color:var(--warn)"></td>
-      <td class="ltxt ${emC}"><input value="${esc(r.task)}" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}"></td>
+      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${r.taskSpan>1?`rowspan="${r.taskSpan}" style="vertical-align:middle"`:''}><input value="${esc(r.task)}" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}"></td>`}
       <td style="background:${r.empty?'#1a1040':'var(--hd2)'};text-align:center"><input type="checkbox" ${r.empty?'checked':''} onchange="toggleEmpty(${i},this.checked)"></td>
       <td class="${r.empty?'off':ctCls}"><input type="number" value="${r.ct||''}" min="0" step="0.1" oninput="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0"></td>
       <td class="${offC}"><input type="number" value="${r.workers}" min="1" oninput="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>
       <td class="${offC}"><input type="number" value="${r.parallel}" min="1" oninput="updNum(${i},'parallel',+this.value)" ${r.empty?'disabled':''}></td>
       <td class="val ${r.empty?'off':ctCls}" style="color:${r.empty?'var(--mut)':''}">${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>
       <td class="val" style="color:${slColor}">${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>
-      <td class="ltxt ${emC}"><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>
-      <td class="ltxt ${emC}"><input value="${esc(r.note)}" oninput="upd(${i},'note',this.value)" placeholder="관리항목"></td>
+      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${r.taskSpan>1?`rowspan="${r.taskSpan}" style="vertical-align:middle"`:''}><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>`}
+      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${r.taskSpan>1?`rowspan="${r.taskSpan}" style="vertical-align:middle"`:''}><input value="${esc(r.note)}" oninput="upd(${i},'note',this.value)" placeholder="관리항목"></td>`}
       <td style="text-align:center"><button class="btn sml warn" onclick="delRow(${i})">삭제</button></td>`;
     tbody.appendChild(tr);
   });
