@@ -547,7 +547,7 @@ function render(){
       <td class="rowlab">${r.conv}</td>
       <td class="${emC}"><input value="${esc(r.name)}" oninput="upd(${i},'name',this.value)" style="font-weight:700"></td>
       <td class="${emC}"><input value="${esc(r.group||'')}" oninput="upd(${i},'group',this.value)" placeholder="—" style="text-align:center;font-weight:700;color:var(--warn)"></td>
-      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${r.taskSpan>1?`rowspan="${r.taskSpan}" style="vertical-align:middle"`:''}><input value="${esc(r.task)}" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}"></td>`}
+      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${r.taskSpan>1?`rowspan="${r.taskSpan}" style="vertical-align:middle"`:''}><textarea rows="${r.taskSpan>1?4:2}" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
       <td style="background:${r.empty?'#1a1040':'var(--hd2)'};text-align:center"><input type="checkbox" ${r.empty?'checked':''} onchange="toggleEmpty(${i},this.checked)"></td>
       <td class="${r.empty?'off':ctCls}"><input type="number" value="${r.ct||''}" min="0" step="0.1" oninput="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0"></td>
       <td class="${offC}"><input type="number" value="${r.workers}" min="1" oninput="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>
