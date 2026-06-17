@@ -374,7 +374,22 @@ const LINE_DEF=[
   {name:'함평',subs:['FRT','RR']},
   {name:'전주',subs:['FRT','RR']},
 ];
-const DEF_NAMES=['111','121','131','141','142','151','152','161','171','181','191'];
+const DEF_LINE12=[
+  {name:'111', task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'121', task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'131', task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'141', task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'142', task:'카울바, 전장모듈, 하네스, C/PAD 조립', group:'A', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'151', task:'클러스터 및 헤드 유닛, 커넥터 체결',   group:'',  note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'152', task:'AVN/패드 부착 및 퓨즈박스 조립',       group:'',  note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'161', task:'클로브 박스 조립 및 퓨즈박스 조립',     group:'',  note:'이종, 누락 미체결 없을 것'},
+  {name:'171', task:'클러스터페시아 조립',                   group:'',  note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'191', task:'전장 검사',                             group:'',  note:'NG 없을 것'},
+  {name:'에어백 서브1',      task:'에어백',                          group:'SUB', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'센터페시아 서브1',  task:'클러스터 페시아, 스위치, 에어덕트', group:'SUB', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'SUB1',              task:'에어덕트, USB 모듈',               group:'SUB', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'SUB2',              task:'AVN BRKT, LTE 모듈 (AVN 사양)',    group:'SUB', note:'누락, 미체결, 바코드 스캔 누락 없을 것'},
+];
 const DEF_CPAD=[
   {name:'CON1', task:'카울바, 전장모듈, 하네스, C/PAD 조립', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
   {name:'CON2', task:'카울바, 전장모듈, 하네스, C/PAD 조립', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
@@ -392,10 +407,11 @@ const DEF_CPAD=[
   {name:'SUB2', task:'AVN BRKT, LTE 모듈 (AVN 사양)', note:'누락, 미체결, 바코드 스캔 누락 없을 것'},
 ];
 function makeRows(li,si){
+  if(li<2) // 조립 1·2라인
+    return DEF_LINE12.map((d,i)=>({conv:i+1,...d,empty:false,ct:0,workers:1,parallel:1}));
   if(li===2&&si===0) // 조립 3라인 C/PAD
     return DEF_CPAD.map((d,i)=>({conv:i+1,...d,empty:false,ct:0,workers:1,parallel:1,group:''}));
-  if(li>=3)return[];
-  return DEF_NAMES.map((n,i)=>({conv:i+1,name:n,task:'',empty:false,ct:0,workers:1,parallel:1,group:i<4?'A':'',note:''}));
+  return[];
 }
 const state=LINE_DEF.map((l,li)=>l.subs.map((_,si)=>({rows:makeRows(li,si)})));
 let curLine=0,curSub=0;
