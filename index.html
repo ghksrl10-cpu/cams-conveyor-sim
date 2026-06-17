@@ -360,7 +360,7 @@ const LINE_DEF=[
 ];
 const DEF_NAMES=['101','102','103','111','121','131','141','151','161','171','181','191'];
 function makeRows(li){
-  if(li>=2)return[];
+  if(li>=3)return[];
   return DEF_NAMES.map((n,i)=>({conv:i+1,name:n,task:'',empty:false,ct:0,workers:1,parallel:1,note:''}));
 }
 const state=LINE_DEF.map((l,li)=>l.subs.map(()=>({rows:makeRows(li)})));
