@@ -287,16 +287,27 @@
     <div class="bar">
       <label>가동시간(분)</label>
       <input type="number" id="workMin" value="480" min="1">
-      <label>공피치(초)</label>
-      <input type="number" id="pitchSec" value="60" min="1" step="0.1" oninput="syncUPH()">
-      <label>목표 UPH</label>
-      <input type="number" id="targetUPH" value="60" min="1" oninput="syncPitch()">
-      <span id="uphHint" style="font-size:13px;color:var(--mut)">→ UPH 60 대/시</span>
+      <label>기준 생산량(대/일)</label>
+      <input type="number" id="baseProd" value="205" min="1" oninput="calcPitch()">
+      <label>공피치</label>
+      <select id="pitchRatio" onchange="calcPitch()" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:14px;background:#0f1117;color:#f1f5f9">
+        <option value="1">1:1</option>
+        <option value="2">2:1</option>
+        <option value="3">3:1</option>
+        <option value="4">4:1</option>
+        <option value="5">5:1</option>
+        <option value="6">6:1</option>
+        <option value="7">7:1</option>
+        <option value="8">8:1</option>
+        <option value="9">9:1</option>
+      </select>
+      <span id="uphHint" style="font-size:13px;color:var(--mut)">→ 실생산 102대 · UPH 12</span>
       <span class="grow"></span>
       <button class="btn sml warn" onclick="resetRows()">초기화</button>
       <button class="btn sml pri" onclick="addRow()">+ 행 추가</button>
     </div>
     <div class="hint">
+      · <b>공피치</b> n:1 → 실생산 = 기준생산량 × n/(n+1). 예) 1:1 → 205 × 1/2 = 102대<br>
       · <b>공정작업</b>에 조립 내용을 입력하세요. · <b>공백</b> 체크 시 해당 컨베어는 시뮬레이션에서 제외됩니다.<br>
       · <b>C/T</b> 입력 시 실C/T·여유율 자동 계산. 초록=정상 / 노랑=주의(85%↑) / 빨강=병목(100%↑)
     </div>
@@ -437,14 +448,34 @@ function buildStabs(){
   });
 }
 
-/* ─── UPH / 피치 ─────────────────────────────── */
-function syncUPH(){const p=+document.getElementById('pitchSec').value||0;if(p>0){const u=Math.round(3600/p);document.getElementById('targetUPH').value=u;document.getElementById('uphHint').textContent='→ UPH '+u+' 대/시';}}
-function syncPitch(){const u=+document.getElementById('targetUPH').value||0;if(u>0){const p=(3600/u).toFixed(1);document.getElementById('pitchSec').value=p;document.getElementById('uphHint').textContent='→ UPH '+u+' 대/시';}}
+/* ─── 공피치 계산 ────────────────────────────── */
+function calcPitch(){
+  const base=+document.getElementById('baseProd').value||205;
+  const n=+document.getElementById('pitchRatio').value||1;
+  const wm=+document.getElementById('workMin').value||480;
+  const actualProd=Math.round(base*n/(n+1));
+  const pitchSec=(wm*60/actualProd).toFixed(1);
+  const uph=Math.round(3600/pitchSec);
+  document.getElementById('uphHint').textContent=
+    '→ 실생산 '+actualProd+'대/일 · 공피치 '+pitchSec+'초 · UPH '+uph;
+}
+function getPitchSec(){
+  const base=+document.getElementById('baseProd').value||205;
+  const n=+document.getElementById('pitchRatio').value||1;
+  const wm=+document.getElementById('workMin').value||480;
+  const actualProd=Math.round(base*n/(n+1));
+  return wm*60/actualProd;
+}
+function getActualProd(){
+  const base=+document.getElementById('baseProd').value||205;
+  const n=+document.getElementById('pitchRatio').value||1;
+  return Math.round(base*n/(n+1));
+}
 
 /* ─── 렌더링 ─────────────────────────────────── */
 function render(){
   const s=G();
-  const pitch=+document.getElementById('pitchSec').value||60;
+  const pitch=getPitchSec();
   const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
   document.getElementById('lineLabel').textContent=lbl;
   document.getElementById('procStat').textContent=s.rows.length+'행 · 유효 '+s.rows.filter(r=>!r.empty).length+'개';
@@ -484,24 +515,27 @@ function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[cu
 /* ─── 시뮬레이션 ─────────────────────────────── */
 function runSim(){
   const s=G();
-  const pitch=+document.getElementById('pitchSec').value||60;
+  const pitch=getPitchSec();
   const wm=+document.getElementById('workMin').value||480;
-  const tU=+document.getElementById('targetUPH').value||60;
+  const tU=getActualProd();
+  const n=+document.getElementById('pitchRatio').value||1;
+  const base=+document.getElementById('baseProd').value||205;
   const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
   const active=s.rows.filter(r=>!r.empty&&r.ct>0);
   if(!active.length){alert('C/T가 입력된 유효 공정이 없습니다.');return;}
   const res=active.map(r=>{const rt=r.ct/(r.parallel||1)/(r.workers||1);return{...r,realCT:rt,load:rt/pitch*100,isBN:rt>pitch};});
   const bn=res.reduce((a,b)=>a.realCT>b.realCT?a:b);
   const lbEff=res.reduce((a,r)=>a+r.realCT,0)/(bn.realCT*res.length)*100;
-  const actU=Math.round(3600/bn.realCT),daily=Math.floor(wm*60/bn.realCT),tD=Math.round(wm*tU/60);
-  const uOk=actU>=tU,pOk=daily>=tD,lbC=lbEff>=85?'ok':lbEff>=70?'warn':'ng';
+  const actU=Math.round(3600/bn.realCT),daily=Math.floor(wm*60/bn.realCT);
+  const pOk=daily>=tU,lbC=lbEff>=85?'ok':lbEff>=70?'warn':'ng';
+  const pitchDisp=pitch.toFixed(1);
 
   let html=`<div class="sec"><div class="sec-h">📊 ${esc(lbl)} 결과 <span class="stat">${new Date().toLocaleString('ko')}</span></div>
   <div class="kpi-row">
-    <div class="kpi blue"><div class="kl">공피치</div><div class="kv">${pitch}<span style="font-size:13px">초</span></div><div class="ks">= ${(3600/pitch).toFixed(1)} UPH</div></div>
-    <div class="kpi ${uOk?'ok':'ng'}"><div class="kl">실 UPH</div><div class="kv">${actU}</div><div class="ks">목표 ${tU} ${uOk?'✅':'❌'}</div></div>
-    <div class="kpi ${uOk?'ok':'ng'}"><div class="kl">병목 C/T</div><div class="kv">${bn.realCT.toFixed(1)}<span style="font-size:13px">초</span></div><div class="ks">${esc(bn.name)}</div></div>
-    <div class="kpi ${pOk?'ok':'ng'}"><div class="kl">일 생산량</div><div class="kv">${daily.toLocaleString()}</div><div class="ks">목표 ${tD.toLocaleString()} ${pOk?'✅':'❌'}</div></div>
+    <div class="kpi blue"><div class="kl">공피치 비율</div><div class="kv">${n}:1</div><div class="ks">기준 ${base}대 → 목표 ${tU}대</div></div>
+    <div class="kpi blue"><div class="kl">공피치(초)</div><div class="kv">${pitchDisp}<span style="font-size:13px">초</span></div><div class="ks">UPH ${actU}</div></div>
+    <div class="kpi ${bn.realCT<=pitch?'ok':'ng'}"><div class="kl">병목 C/T</div><div class="kv">${bn.realCT.toFixed(1)}<span style="font-size:13px">초</span></div><div class="ks">${esc(bn.name)}</div></div>
+    <div class="kpi ${pOk?'ok':'ng'}"><div class="kl">일 생산량</div><div class="kv">${daily.toLocaleString()}</div><div class="ks">목표 ${tU}대 ${pOk?'✅':'❌'}</div></div>
     <div class="kpi ${lbC}"><div class="kl">라인밸런스</div><div class="kv">${lbEff.toFixed(1)}<span style="font-size:13px">%</span></div><div class="ks">${lbEff>=85?'양호':lbEff>=70?'개선필요':'불량'}</div></div>
     <div class="kpi blue"><div class="kl">유효 공정</div><div class="kv">${res.length}</div><div class="ks">공백 ${s.rows.filter(r=>r.empty).length}개 제외</div></div>
   </div></div>`;
@@ -556,13 +590,14 @@ function runSim(){
 function saveScenario(){
   const name=prompt('시나리오 이름:','시나리오 '+(scenarios.length+1));
   if(!name)return;
-  const s=G(),pitch=+document.getElementById('pitchSec').value||60,wm=+document.getElementById('workMin').value||480,tU=+document.getElementById('targetUPH').value||60;
+  const s=G(),pitch=getPitchSec(),wm=+document.getElementById('workMin').value||480,tU=getActualProd();
+  const n=+document.getElementById('pitchRatio').value||1,base=+document.getElementById('baseProd').value||205;
   const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
   const active=s.rows.filter(r=>!r.empty&&r.ct>0);
   let bnCT=0;const pc=active.map(r=>{const rt=r.ct/(r.parallel||1)/(r.workers||1);if(rt>bnCT)bnCT=rt;return rt;});
   const uph=bnCT>0?Math.round(3600/bnCT):0,daily=bnCT>0?Math.floor(wm*60/bnCT):0;
   const lb=active.length>0?pc.reduce((a,v)=>a+v,0)/(bnCT*active.length)*100:0;
-  scenarios.push({id:Date.now(),name,lbl,pitch,cnt:active.length,uph,daily,lb:lb.toFixed(1),bnCT:bnCT.toFixed(1),at:new Date().toLocaleString('ko')});
+  scenarios.push({id:Date.now(),name,lbl,ratio:n+':1',base,pitch:pitch.toFixed(1),cnt:active.length,uph,daily,lb:lb.toFixed(1),bnCT:bnCT.toFixed(1),at:new Date().toLocaleString('ko')});
   localStorage.setItem('conv_scen4',JSON.stringify(scenarios));
   document.getElementById('saveNote').innerHTML='<b>저장됨</b> · '+name;
 }
@@ -570,13 +605,13 @@ function renderScen(){
   if(!scenarios.length){document.getElementById('scenArea').innerHTML='<div style="padding:30px;text-align:center;color:var(--mut)">저장된 시나리오가 없습니다.</div>';return;}
   const mU=Math.max(...scenarios.map(s=>s.uph)),mD=Math.max(...scenarios.map(s=>s.daily)),mL=Math.max(...scenarios.map(s=>+s.lb));
   let html=`<table class="scen-table"><thead><tr>
-    <th>시나리오</th><th>라인</th><th>저장일시</th><th>공피치</th><th>공정수</th>
+    <th>시나리오</th><th>라인</th><th>저장일시</th><th>공피치</th><th>기준생산</th><th>공정수</th>
     <th>실UPH</th><th>병목C/T</th><th>일생산량</th><th>밸런스</th><th>삭제</th>
   </tr></thead><tbody>`;
   scenarios.forEach(s=>{
     html+=`<tr>
       <td style="font-weight:700">${esc(s.name)}</td><td style="color:var(--blue)">${esc(s.lbl)}</td>
-      <td style="font-size:11px;color:var(--mut)">${s.at}</td><td>${s.pitch}초</td><td>${s.cnt}</td>
+      <td style="font-size:11px;color:var(--mut)">${s.at}</td><td>${s.ratio||''} (${s.pitch}초)</td><td>${s.base||'-'}대</td><td>${s.cnt}</td>
       <td class="${s.uph===mU?'best':''}">${s.uph}</td><td>${s.bnCT}초</td>
       <td class="${s.daily===mD?'best':''}">${s.daily.toLocaleString()}</td>
       <td class="${+s.lb===mL?'best':''}">${s.lb}%</td>
@@ -592,7 +627,7 @@ function clearScen(){if(!confirm('모두 삭제?'))return;scenarios=[];localStor
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 /* ─── 초기화 ──────────────────────────────────── */
-buildStabs();render();renderMain();renderScen();syncUPH();
+buildStabs();render();renderMain();renderScen();calcPitch();
 </script>
 </body>
 </html>
