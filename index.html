@@ -535,12 +535,12 @@ function render(){
   tbody.innerHTML='';
   s.rows.forEach((r,i)=>{
     const span=r.taskSpan||1;
-    // ctSpan>1이면 해당 행 CT가 그룹 전체 CT, 아니면 개별 합산
-    const groupCT=(r.ctSpan||1)>1 ? r.ct : span>1
-      ? s.rows.slice(i,i+span).reduce((a,row)=>a+(row.ct||0),0)
-      : r.ct;
-    const effectivePitch=pitch*span; // 다공정: 작업자 허용시간 = 공피치 × 공정 수
-    const realCT=groupCT>0?groupCT/(r.workers||1):0;
+    const isGroup=span>1; // 다공정 합산 그룹 여부
+    // 다공정 그룹: 입력 C/T = 한 작업자의 총 C/T → 나누지 않음
+    // 개별 공정: 실C/T = C/T ÷ 인원
+    const groupCT=isGroup ? r.ct : r.ct;
+    const effectivePitch=pitch*span; // 작업자 허용시간 = 공피치 × 공정 수
+    const realCT=groupCT>0?(isGroup?groupCT:groupCT/(r.workers||1)):0;
     const load=realCT>0?realCT/effectivePitch*100:0;
     const slackPct=realCT>0?((effectivePitch-realCT)/effectivePitch*100).toFixed(1):null;
     let ctCls='';
