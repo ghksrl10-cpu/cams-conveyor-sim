@@ -375,11 +375,29 @@ const LINE_DEF=[
   {name:'전주',subs:['FRT','RR']},
 ];
 const DEF_NAMES=['111','121','131','141','151','152','161','171','181','191'];
-function makeRows(li){
+const DEF_CPAD=[
+  {name:'CON1', task:'카울바, 전장모듈, 하네스, C/PAD 조립', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'CON2', task:'카울바, 전장모듈, 하네스, C/PAD 조립', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'CON3', task:'카울바, 전장모듈, 하네스, C/PAD 조립', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'CON4', task:'카울바, 전장모듈, 하네스, C/PAD 조립', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'CON5', task:'카울바, 전장모듈, 하네스, C/PAD 조립', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것'},
+  {name:'CON5-1', task:'에어백', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'CON6', task:'클러스터 및 헤드 유닛, 커넥터 체결', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'CON7', task:'AVN/패드 부착 및 퓨즈박스 조립', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'CON8', task:'클로브 박스 조립 및 퓨즈박스 조립', note:'이종, 누락 미체결 없을 것'},
+  {name:'CON9', task:'클러스터페시아 조립', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'CON9-1', task:'클러스터 페시아, 스위치, 에어덕트', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'E-COS', task:'전장 검사', note:'NG 없을 것'},
+  {name:'SUB1', task:'에어덕트, USB 모듈', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것'},
+  {name:'SUB2', task:'AVN BRKT, LTE 모듈 (AVN 사양)', note:'누락, 미체결, 바코드 스캔 누락 없을 것'},
+];
+function makeRows(li,si){
+  if(li===2&&si===0) // 조립 3라인 C/PAD
+    return DEF_CPAD.map((d,i)=>({conv:i+1,...d,empty:false,ct:0,workers:1,parallel:1,group:''}));
   if(li>=3)return[];
   return DEF_NAMES.map((n,i)=>({conv:i+1,name:n,task:'',empty:false,ct:0,workers:1,parallel:1,group:i<4?'A':'',note:''}));
 }
-const state=LINE_DEF.map((l,li)=>l.subs.map(()=>({rows:makeRows(li)})));
+const state=LINE_DEF.map((l,li)=>l.subs.map((_,si)=>({rows:makeRows(li,si)})));
 let curLine=0,curSub=0;
 let scenarios=JSON.parse(localStorage.getItem('conv_scen4')||'[]');
 function G(){return state[curLine][curSub];}
@@ -527,7 +545,7 @@ function updNum(i,k,v){G().rows[i][k]=v||0;render();}
 function toggleEmpty(i,v){G().rows[i].empty=v;render();}
 function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,parallel:1,group:'',note:''});render();}
 function delRow(i){if(!confirm('삭제하시겠습니까?'))return;G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();}
-function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[curLine][curSub]={rows:makeRows(curLine)};render();}
+function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[curLine][curSub]={rows:makeRows(curLine,curSub)};render();}
 
 /* ─── 시뮬레이션 ─────────────────────────────── */
 function runSim(){
