@@ -392,11 +392,11 @@ const _C3T='카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초
 const _C3F='너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA';
 const _C3N='토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것';
 const DEF_CPAD=[
-  {name:'111',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:5, workerSpan:5},
-  {name:'121',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0},
-  {name:'131',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0},
-  {name:'141',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0},
-  {name:'142',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0},
+  {name:'111',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:5, workerSpan:5, ctSpan:5},
+  {name:'121',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
+  {name:'131',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
+  {name:'141',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
+  {name:'142',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
   {name:'151',              task:'클러스터, 오디오',                      group:'',    fastener:'', note:'', empty:false},
   {name:'152',              task:'패드부착, AVN 조립',                    group:'',    fastener:'', note:'', empty:false},
   {name:'161',              task:'퓨즈커버 조립, 글러브 박스 조립',        group:'',    fastener:'', note:'', empty:false},
@@ -535,8 +535,8 @@ function render(){
   tbody.innerHTML='';
   s.rows.forEach((r,i)=>{
     const span=r.taskSpan||1;
-    // span그룹이면 그룹 내 C/T 합산, 아니면 개별
-    const groupCT=span>1
+    // ctSpan>1이면 해당 행 CT가 그룹 전체 CT, 아니면 개별 합산
+    const groupCT=(r.ctSpan||1)>1 ? r.ct : span>1
       ? s.rows.slice(i,i+span).reduce((a,row)=>a+(row.ct||0),0)
       : r.ct;
     const effectivePitch=pitch*span; // 다공정: 작업자 허용시간 = 공피치 × 공정 수
@@ -554,7 +554,7 @@ function render(){
       <td class="${emC}"><input value="${esc(r.group||'')}" oninput="upd(${i},'group',this.value)" placeholder="—" style="text-align:center;font-weight:700;color:var(--warn)"></td>
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea rows="${span>1?4:2}" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
       <td style="background:${r.empty?'#1a1040':'var(--hd2)'};text-align:center"><input type="checkbox" ${r.empty?'checked':''} onchange="toggleEmpty(${i},this.checked)"></td>
-      <td class="${r.empty?'off':ctCls}"><input type="number" value="${r.ct||''}" min="0" step="0.1" oninput="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0"></td>
+      ${r.ctSpan===0?'':`<td class="${r.empty?'off':ctCls}" ${(r.ctSpan||1)>1?`rowspan="${r.ctSpan}" style="vertical-align:middle"`:''}><input type="number" value="${r.ct||''}" min="0" step="0.1" oninput="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0"></td>`}
       ${r.workerSpan===0?'':`<td class="${offC}" ${(r.workerSpan||1)>1?`rowspan="${r.workerSpan}" style="vertical-align:middle;text-align:center"`:''}><input type="number" value="${r.workers}" min="1" oninput="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>`}
       ${r.taskSpan===0?'':`<td class="val ${r.empty?'off':ctCls}" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${r.empty?'var(--mut)':''}"`:''}>${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초${span>1?" (합산)":""}':''}</td>`}
       ${r.taskSpan===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
