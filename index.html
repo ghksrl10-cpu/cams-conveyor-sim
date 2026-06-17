@@ -309,6 +309,8 @@
       <span class="grow"></span>
       <button class="btn sml warn" onclick="resetRows()">초기화</button>
       <button class="btn sml pri" onclick="addRow()">+ 행 추가</button>
+      <button class="btn sml grn" onclick="saveLineData()">💾 C/T·인원 저장</button>
+      <span id="lineSaveNote" style="font-size:12px;color:var(--ok);margin-left:4px"></span>
     </div>
     <div class="hint">
       · <b>공피치</b> n:1 → 실생산 = 기준생산량 × n/(n+1). 예) 1:1 → 205 × 1/2 = 102대<br>
@@ -436,7 +438,7 @@ function showView(v){
 function gotoSim(li){
   curLine=li;curSub=0;
   showView('sim');
-  buildStabs();render();
+  buildStabs();render();loadLineData();
   document.getElementById('simTitle').textContent=LINE_DEF[li].name+' — '+LINE_DEF[li].subs[0];
   // 라인 nav 표시
   document.querySelectorAll('[id^=nl]').forEach((el,i)=>el.classList.toggle('active',i===li));
@@ -484,7 +486,7 @@ function buildStabs(){
   LINE_DEF[curLine].subs.forEach((s,i)=>{
     const el=document.createElement('div');
     el.className='stab'+(i===curSub?' active':'');
-    el.textContent=s;el.onclick=()=>{curSub=i;buildStabs();render();document.getElementById('simTitle').textContent=LINE_DEF[curLine].name+' — '+s;};
+    el.textContent=s;el.onclick=()=>{curSub=i;buildStabs();render();loadLineData();document.getElementById('simTitle').textContent=LINE_DEF[curLine].name+' — '+s;};
     w.appendChild(el);
   });
 }
@@ -566,6 +568,28 @@ function render(){
 }
 function upd(i,k,v){G().rows[i][k]=v;}
 function updNum(i,k,v){G().rows[i][k]=v||0;render();}
+
+/* ─── C/T·인원 저장/불러오기 ─────────────────── */
+function saveLineData(){
+  const key='conv_linedata_'+curLine+'_'+curSub;
+  const data=G().rows.map(r=>({name:r.name,ct:r.ct,workers:r.workers}));
+  localStorage.setItem(key,JSON.stringify(data));
+  const el=document.getElementById('lineSaveNote');
+  el.textContent='✅ 저장됨 '+new Date().toLocaleTimeString('ko');
+  setTimeout(()=>el.textContent='',3000);
+}
+function loadLineData(){
+  const key='conv_linedata_'+curLine+'_'+curSub;
+  const raw=localStorage.getItem(key);
+  if(!raw)return;
+  const data=JSON.parse(raw);
+  const rows=G().rows;
+  data.forEach(d=>{
+    const row=rows.find(r=>r.name===d.name);
+    if(row){row.ct=d.ct||0;row.workers=d.workers||1;}
+  });
+  render();
+}
 function toggleEmpty(i,v){G().rows[i].empty=v;render();}
 function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:''});render();}
 function delRow(i){if(!confirm('삭제하시겠습니까?'))return;G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();}
