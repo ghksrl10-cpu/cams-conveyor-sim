@@ -335,7 +335,8 @@
               <th style="width:64px">병렬</th>
               <th style="width:86px">실C/T(초)</th>
               <th style="width:76px">여유율</th>
-              <th style="min-width:110px;text-align:left;padding-left:6px">비고</th>
+              <th style="min-width:120px;text-align:left;padding-left:6px">체결 수량</th>
+              <th style="min-width:110px;text-align:left;padding-left:6px">비고(관리항목)</th>
               <th style="width:52px">삭제</th>
             </tr>
           </thead>
@@ -374,22 +375,25 @@ const LINE_DEF=[
   {name:'함평',subs:['FRT','RR']},
   {name:'전주',subs:['FRT','RR']},
 ];
+const _A='카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초크BRKT, 라디어 파워선, 하네스, 에탁스, 피에조 부저, 전장모듈, PAS 유닛, TPMS, C/PAD 조립, 에어택 토크 조립';
+const _AF='너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA';
+const _AN='토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것';
 const DEF_LINE12=[
-  {name:'111', task:'카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초크BRKT, 라디어 파워선, 하네스, 에탁스, 피에조 부저, 전장모듈, PAS 유닛, TPMS, C/PAD 조립, 에어택 토크 조립', group:'A', note:'너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA', empty:false},
-  {name:'121', task:'카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초크BRKT, 라디어 파워선, 하네스, 에탁스, 피에조 부저, 전장모듈, PAS 유닛, TPMS, C/PAD 조립, 에어택 토크 조립', group:'A', note:'너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA', empty:false},
-  {name:'131', task:'카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초크BRKT, 라디어 파워선, 하네스, 에탁스, 피에조 부저, 전장모듈, PAS 유닛, TPMS, C/PAD 조립, 에어택 토크 조립', group:'A', note:'너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA', empty:false},
-  {name:'141', task:'카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초크BRKT, 라디어 파워선, 하네스, 에탁스, 피에조 부저, 전장모듈, PAS 유닛, TPMS, C/PAD 조립, 에어택 토크 조립', group:'A', note:'너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA', empty:false},
-  {name:'142', task:'카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초크BRKT, 라디어 파워선, 하네스, 에탁스, 피에조 부저, 전장모듈, PAS 유닛, TPMS, C/PAD 조립, 에어택 토크 조립', group:'A', note:'너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA', empty:false},
-  {name:'151', task:'클러스터, 오디오',                      group:'', note:'', empty:false},
-  {name:'152', task:'패드부착, AVN 조립',                    group:'', note:'', empty:false},
-  {name:'161', task:'퓨즈커버 조립, 글러브 박스 조립',        group:'', note:'', empty:false},
-  {name:'171', task:'센터페시아 조립',                        group:'', note:'', empty:false},
-  {name:'181', task:'',                                       group:'', note:'', empty:true},
-  {name:'191', task:'전장검사',                               group:'', note:'', empty:false},
-  {name:'에어백 서브1',     task:'에어백 조립',                         group:'SUB', note:'', empty:false},
-  {name:'센터페시아 서브1', task:'클러스터 페시아, 스위치, 에어덕트',    group:'SUB', note:'', empty:false},
-  {name:'SUB1',             task:'에어덕트, USB 모듈',                  group:'SUB', note:'', empty:false},
-  {name:'SUB2',             task:'AVN BRKT, LTE 모듈 (AVN 사양)',       group:'SUB', note:'', empty:false},
+  {name:'111', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'121', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'131', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'141', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'142', task:_A, group:'A', fastener:_AF, note:_AN, empty:false},
+  {name:'151', task:'클러스터, 오디오',                     group:'', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'152', task:'패드부착, AVN 조립',                   group:'', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'161', task:'퓨즈커버 조립, 글러브 박스 조립',       group:'', fastener:'', note:'이종, 누락 미체결 없을 것',                  empty:false},
+  {name:'171', task:'센터페시아 조립',                       group:'', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'181', task:'',                                      group:'', fastener:'', note:'', empty:true},
+  {name:'191', task:'전장검사',                              group:'', fastener:'', note:'NG 없을 것',                                 empty:false},
+  {name:'에어백 서브1',     task:'에어백 조립',                        group:'SUB', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'센터페시아 서브1', task:'클러스터 페시아, 스위치, 에어덕트',   group:'SUB', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'SUB1',             task:'에어덕트, USB 모듈',                 group:'SUB', fastener:'', note:'이종, 누락 미체결, 바코드 스캔 누락 없을 것', empty:false},
+  {name:'SUB2',             task:'AVN BRKT, LTE 모듈 (AVN 사양)',      group:'SUB', fastener:'', note:'누락, 미체결, 바코드 스캔 누락 없을 것',       empty:false},
 ];
 const DEF_CPAD=[
   {name:'CON1',   task:'카울바, 전장모듈, 하네스, C/PAD 조립', note:'토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것', empty:false},
@@ -552,7 +556,8 @@ function render(){
       <td class="${offC}"><input type="number" value="${r.parallel}" min="1" oninput="updNum(${i},'parallel',+this.value)" ${r.empty?'disabled':''}></td>
       <td class="val ${r.empty?'off':ctCls}" style="color:${r.empty?'var(--mut)':''}">${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>
       <td class="val" style="color:${slColor}">${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>
-      <td class="ltxt ${emC}"><input value="${esc(r.note)}" oninput="upd(${i},'note',this.value)" placeholder="메모"></td>
+      <td class="ltxt ${emC}"><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>
+      <td class="ltxt ${emC}"><input value="${esc(r.note)}" oninput="upd(${i},'note',this.value)" placeholder="관리항목"></td>
       <td style="text-align:center"><button class="btn sml warn" onclick="delRow(${i})">삭제</button></td>`;
     tbody.appendChild(tr);
   });
@@ -560,7 +565,7 @@ function render(){
 function upd(i,k,v){G().rows[i][k]=v;}
 function updNum(i,k,v){G().rows[i][k]=v||0;render();}
 function toggleEmpty(i,v){G().rows[i].empty=v;render();}
-function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,parallel:1,group:'',note:''});render();}
+function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,parallel:1,group:'',fastener:'',note:''});render();}
 function delRow(i){if(!confirm('삭제하시겠습니까?'))return;G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();}
 function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[curLine][curSub]={rows:makeRows(curLine,curSub)};render();}
 
