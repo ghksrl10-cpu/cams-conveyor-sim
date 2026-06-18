@@ -635,9 +635,18 @@ function render(){
   });
 }
 function upd(i,k,v){G().rows[i][k]=v;}
-function updNum(i,k,v){G().rows[i][k]=v||0;render();}
+function updNum(i,k,v){
+  G().rows[i][k]=v!=null?v:0;
+  render();
+  if(k==='ct') autoSaveCT();
+}
 
 /* ─── C/T 저장/불러오기 ─────────────────────── */
+function autoSaveCT(){
+  const key='conv_ct_'+curLine+'_'+curSub;
+  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null}));
+  localStorage.setItem(key,JSON.stringify(data));
+}
 function saveCTData(){
   const key='conv_ct_'+curLine+'_'+curSub;
   const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null}));
