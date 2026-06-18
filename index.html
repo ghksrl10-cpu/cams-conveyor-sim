@@ -1337,10 +1337,16 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
       </div>
 
       <!-- WIRING -->
-      <div class="dist-row" style="border:none;padding:4px 0">
+      <div class="dist-row" style="border:none;padding:4px 0;flex-wrap:wrap;gap:6px">
         <div class="dname">WIRING<br><span style="color:var(--mut);font-size:11px">5+센서×3+CLIP×1.8</span></div>
-        <input class="dadd" type="number" id="ctcWireSensor" min="0" value="0" oninput="calcCTC()" placeholder="센서수">
-        <input class="dadd" type="number" id="ctcWireClip" min="0" value="0" oninput="calcCTC()" placeholder="CLIP수">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+          <span style="font-size:11px;color:var(--mut)">센서수</span>
+          <input class="dadd" type="number" id="ctcWireSensor" min="0" value="0" oninput="calcCTC()">
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+          <span style="font-size:11px;color:var(--mut)">CLIP수</span>
+          <input class="dadd" type="number" id="ctcWireClip" min="0" value="0" oninput="calcCTC()">
+        </div>
       </div>
 
       <!-- 전장품 TEST -->
