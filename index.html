@@ -718,7 +718,7 @@ function openCTCalc(i){
   const f=r.ctFormula||{};
   // 저장된 값 또는 초기값 복원
   const numIds=['ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
-   'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcPadCnt','ctcPadLen',
+   'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcTorque','ctcPadCnt','ctcPadLen',
    'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW'];
   numIds.forEach(id=>{const el=document.getElementById(id);if(el)el.value=f[id]!=null?f[id]:0;});
   document.getElementById('ctcMove').value=f.ctcMove!=null?f.ctcMove:0;
@@ -766,6 +766,8 @@ function calcCTC(){
   t+=v('ctcBarcode')*3;
   // 전장품 TEST
   const ti=v('ctcTestItem'); if(ti) t+=3+1.5*ti;
+  // 토크/임팩 검증
+  t+=v('ctcTorque')*8;
   // PAD
   const padType=document.getElementById('ctcPadType')?.value;
   const pc=v('ctcPadCnt'),pl=v('ctcPadLen');
@@ -1360,6 +1362,11 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
       <div class="dist-row" style="border:none;padding:4px 0">
         <div class="dname">전장품 TEST<br><span style="color:var(--mut);font-size:11px">3+항목×1.5초</span></div>
         <input class="dadd" type="number" id="ctcTestItem" min="0" value="0" oninput="calcCTC()" placeholder="항목수">
+      </div>
+      <!-- 토크/임팩 검증 -->
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">토크/임팩 검증 <span style="color:var(--mut);font-size:12px">×8초</span></div>
+        <input class="dadd" type="number" id="ctcTorque" min="0" value="0" oninput="calcCTC()">
       </div>
     </div>
 
