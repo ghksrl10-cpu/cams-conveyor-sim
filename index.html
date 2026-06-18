@@ -668,7 +668,7 @@ function openCTCalc(i){
   document.getElementById('ctcProcName').textContent=r.name||('공정 '+(i+1));
   // 입력 초기화
   ['ctcMove','ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
-   'ctcWireSensor','ctcWireClip','ctcTestItem','ctcPadCnt','ctcPadLen',
+   'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcPadCnt','ctcPadLen',
    'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW']
     .forEach(id=>{const el=document.getElementById(id);if(el)el.value=el.type==='checkbox'?false:0;});
   document.getElementById('ctcBrktType').value='screw';
@@ -711,6 +711,8 @@ function calcCTC(){
   // WIRING
   t+=v('ctcWireSensor')*3+v('ctcWireClip')*1.8;
   if(v('ctcWireSensor')||v('ctcWireClip')) t+=5;
+  // 바코드 스캔
+  t+=v('ctcBarcode')*3;
   // 전장품 TEST
   const ti=v('ctcTestItem'); if(ti) t+=3+1.5*ti;
   // PAD
@@ -1276,6 +1278,11 @@ buildStabs();render();renderMain();renderScen();calcPitch();renderCT();
       <div class="dist-row" style="border:none;padding:4px 0">
         <div class="dname">전장품 TEST<br><span style="color:var(--mut);font-size:11px">3+항목×1.5초</span></div>
         <input class="dadd" type="number" id="ctcTestItem" min="0" value="0" oninput="calcCTC()" placeholder="항목수">
+      </div>
+      <!-- 바코드 스캔 -->
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">바코드 스캔 <span style="color:var(--mut);font-size:12px">×3초</span></div>
+        <input class="dadd" type="number" id="ctcBarcode" min="0" value="0" oninput="calcCTC()" placeholder="개수">
       </div>
     </div>
 
