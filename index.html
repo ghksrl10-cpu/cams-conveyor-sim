@@ -306,6 +306,7 @@
       <input type="number" id="baseProd" value="205" min="1" oninput="calcPitch()">
       <label>공피치</label>
       <select id="pitchRatio" onchange="calcPitch()" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:14px;background:#0f1117;color:#f1f5f9">
+        <option value="0">정상 (공피치 없음)</option>
         <option value="1">1:1</option>
         <option value="2">2:1</option>
         <option value="3">3:1</option>
@@ -557,13 +558,14 @@ function buildStabs(){
 /* ─── 공피치 계산 ────────────────────────────── */
 function calcPitch(){
   const base=+document.getElementById('baseProd').value||205;
-  const n=+document.getElementById('pitchRatio').value||1;
+  const n=+document.getElementById('pitchRatio').value;
   const wm=+document.getElementById('workMin').value||480;
-  const actualProd=Math.round(base*n/(n+1));
+  const actualProd=n===0?base:Math.round(base*n/(n+1));
   const pitchSec=(wm*60/actualProd).toFixed(1);
   const uph=Math.round(3600/pitchSec);
   document.getElementById('targetUPH').value=uph;
-  document.getElementById('uphHint').textContent='→ 실생산 '+actualProd+'대/일 · 공피치 '+pitchSec+'초';
+  const label=n===0?'공피치 없음':n+':1';
+  document.getElementById('uphHint').textContent='→ 실생산 '+actualProd+'대/일 · '+label+' · 피치 '+pitchSec+'초';
 }
 function syncFromUPH(){
   const uph=+document.getElementById('targetUPH').value||1;
@@ -576,17 +578,17 @@ function getPitchSec(){
   const uph=+document.getElementById('targetUPH').value||0;
   if(uph>0) return 3600/uph;
   const base=+document.getElementById('baseProd').value||205;
-  const n=+document.getElementById('pitchRatio').value||1;
+  const n=+document.getElementById('pitchRatio').value;
   const wm=+document.getElementById('workMin').value||480;
-  return wm*60/Math.round(base*n/(n+1));
+  return wm*60/(n===0?base:Math.round(base*n/(n+1)));
 }
 function getActualProd(){
   const uph=+document.getElementById('targetUPH').value||0;
   const wm=+document.getElementById('workMin').value||480;
   if(uph>0) return Math.floor(wm*60/(3600/uph));
   const base=+document.getElementById('baseProd').value||205;
-  const n=+document.getElementById('pitchRatio').value||1;
-  return Math.round(base*n/(n+1));
+  const n=+document.getElementById('pitchRatio').value;
+  return n===0?base:Math.round(base*n/(n+1));
 }
 
 /* ─── 렌더링 ─────────────────────────────────── */
