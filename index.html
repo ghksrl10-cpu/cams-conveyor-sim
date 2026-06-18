@@ -161,6 +161,20 @@
   section{display:none}
   section.active{display:block}
 
+  /* ── 배분 모달 ── */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;align-items:center;justify-content:center}
+  .modal-bg.show{display:flex}
+  .modal{background:#1a1d24;border:1px solid var(--bd);border-radius:16px;padding:22px 26px;width:540px;max-width:96vw;max-height:85vh;overflow-y:auto}
+  .modal h2{margin:0 0 4px;font-size:18px}
+  .modal .msub{color:var(--mut);font-size:13px;margin-bottom:16px}
+  .dist-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .dist-row:last-child{border-bottom:none}
+  .dist-row .dname{flex:1;font-size:14px;font-weight:600}
+  .dist-row .dadd{width:84px;padding:6px 8px;border:1px solid var(--bd);border-radius:8px;background:#0f1117;color:var(--ink);font-size:14px;text-align:center}
+  .dist-row .dresult{width:94px;font-size:13px;font-weight:700;text-align:right;color:var(--ok)}
+  .dist-total{background:#0f1117;border-radius:10px;padding:12px;margin:14px 0;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+  .dist-total b{font-size:16px}
+
   @media(max-width:820px){
     .side{transform:translateX(-100%);transition:.25s}
     .side.open{transform:translateX(0)}
@@ -610,7 +624,10 @@ function render(){
       ${r.taskSpan===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>`}
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><input value="${esc(r.note)}" oninput="upd(${i},'note',this.value)" placeholder="관리항목"></td>`}
-      <td style="text-align:center"><button class="btn sml warn" onclick="delRow(${i})">삭제</button></td>`;
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn sml" onclick="openDist(${i})" style="margin-bottom:3px">🔀 배분</button><br>
+        <button class="btn sml warn" onclick="delRow(${i})">삭제</button>
+      </td>`;
     tbody.appendChild(tr);
   });
 }
@@ -642,6 +659,83 @@ function toggleEmpty(i,v){G().rows[i].empty=v;render();}
 function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:''});render();}
 function delRow(i){if(!confirm('삭제하시겠습니까?'))return;G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();}
 function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[curLine][curSub]={rows:makeRows(curLine,curSub)};render();}
+
+/* ─── 공수 배분 ───────────────────────────────── */
+let _distIdx=-1;
+function openDist(i){
+  const rows=G().rows;
+  const src=rows[i];
+  _distIdx=i;
+  const srcCT=src.ct||0;
+  document.getElementById('distSrcName').textContent=src.name||('공정 '+(i+1));
+  document.getElementById('distSrcCT').textContent=srcCT.toFixed(1)+'초';
+  const targets=rows.filter((_,j)=>j!==i&&!_.empty);
+  const list=document.getElementById('distList');
+  list.innerHTML='';
+  targets.forEach((r,ti)=>{
+    const origIdx=rows.indexOf(r);
+    const div=document.createElement('div');
+    div.className='dist-row';
+    div.dataset.origIdx=origIdx;
+    div.innerHTML=`
+      <div class="dname">${esc(r.name||'공정')}<span style="color:var(--mut);font-size:12px;margin-left:6px">현재 ${r.ct||0}초</span></div>
+      <input class="dadd" type="number" min="0" step="0.1" value="0" placeholder="0"
+        oninput="updateDistTotal()" id="dadd_${origIdx}">
+      <div class="dresult" id="dres_${origIdx}">${(r.ct||0).toFixed(1)}초</div>`;
+    list.appendChild(div);
+  });
+  updateDistTotal();
+  document.getElementById('distModal').classList.add('show');
+}
+function updateDistTotal(){
+  const rows=G().rows;
+  let sum=0;
+  document.querySelectorAll('.dadd').forEach(inp=>{
+    const v=+inp.value||0;
+    sum+=v;
+    const origIdx=+inp.id.replace('dadd_','');
+    const r=rows[origIdx];
+    const el=document.getElementById('dres_'+origIdx);
+    if(el)el.textContent=((r?r.ct:0)+v).toFixed(1)+'초';
+  });
+  const srcCT=(_distIdx>=0?rows[_distIdx]?.ct:0)||0;
+  const rem=srcCT-sum;
+  document.getElementById('distRemain').textContent=rem.toFixed(1)+'초';
+  document.getElementById('distRemain').style.color=Math.abs(rem)<0.05?'var(--ok)':rem<0?'var(--ng)':'var(--warn)';
+}
+function distEven(){
+  const rows=G().rows;
+  const src=rows[_distIdx];
+  if(!src)return;
+  const srcCT=src.ct||0;
+  const inputs=document.querySelectorAll('.dadd');
+  const each=inputs.length?+(srcCT/inputs.length).toFixed(1):0;
+  let assigned=0;
+  inputs.forEach((inp,ti)=>{
+    const v=ti<inputs.length-1?each:+((srcCT-assigned).toFixed(1));
+    inp.value=v;
+    assigned+=each;
+  });
+  updateDistTotal();
+}
+function applyDist(){
+  const rows=G().rows;
+  const src=rows[_distIdx];
+  if(!src)return;
+  const srcCT=src.ct||0;
+  let sum=0;
+  document.querySelectorAll('.dadd').forEach(inp=>{sum+=+inp.value||0;});
+  if(Math.abs(sum-srcCT)>0.1&&!confirm(`배분 합계 ${sum.toFixed(1)}초가 원래 C/T ${srcCT.toFixed(1)}초와 다릅니다. 계속하시겠습니까?`))return;
+  document.querySelectorAll('.dadd').forEach(inp=>{
+    const v=+inp.value||0;
+    if(!v)return;
+    const origIdx=+inp.id.replace('dadd_','');
+    rows[origIdx].ct=+((rows[origIdx].ct+v).toFixed(1));
+  });
+  closeDist();
+  render();
+}
+function closeDist(){document.getElementById('distModal').classList.remove('show');}
 
 /* ─── 시뮬레이션 ─────────────────────────────── */
 function runSim(){
@@ -1009,5 +1103,26 @@ function deleteCTSave(){
 /* ─── 초기화 ──────────────────────────────────── */
 buildStabs();render();renderMain();renderScen();calcPitch();renderCT();
 </script>
+
+<!-- ===== 공수 배분 모달 ===== -->
+<div class="modal-bg" id="distModal" onclick="if(event.target===this)closeDist()">
+  <div class="modal">
+    <h2>🔀 공수 재배분</h2>
+    <div class="msub">
+      <b id="distSrcName"></b> 공정의 C/T
+      <b id="distSrcCT" style="color:var(--ok)"></b>를 다른 공정에 배분합니다.
+    </div>
+    <div class="dist-total">
+      <span>배분 잔여</span>
+      <b id="distRemain" style="color:var(--warn)">0.0초</b>
+    </div>
+    <div id="distList"></div>
+    <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+      <button class="btn sml" onclick="distEven()">균등 배분</button>
+      <button class="btn sml pri" onclick="applyDist()">적용</button>
+      <button class="btn sml warn" onclick="closeDist()">취소</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
