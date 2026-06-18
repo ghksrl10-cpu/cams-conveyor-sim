@@ -301,11 +301,11 @@
 
     <div class="bar">
       <label>가동시간(분)</label>
-      <input type="number" id="workMin" value="460" min="1">
+      <input type="number" id="workMin" value="460" min="1" oninput="calcPitch();autoSaveBar()">
       <label>기준 생산량(대/일)</label>
-      <input type="number" id="baseProd" value="205" min="1" oninput="calcPitch()">
+      <input type="number" id="baseProd" value="205" min="1" oninput="calcPitch();autoSaveBar()">
       <label>공피치</label>
-      <select id="pitchRatio" onchange="calcPitch()" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:14px;background:#0f1117;color:#f1f5f9">
+      <select id="pitchRatio" onchange="calcPitch();autoSaveBar()" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:14px;background:#0f1117;color:#f1f5f9">
         <option value="0">정상 (공피치 없음)</option>
         <option value="1">1:1</option>
         <option value="2">2:1</option>
@@ -320,7 +320,7 @@
       <label>목표 UPH</label>
       <input type="number" id="targetUPH" value="13" min="1" style="width:70px" oninput="syncFromUPH()">
       <label>투입 인원</label>
-      <input type="number" id="totalWorkers" value="10" min="1" style="width:70px">
+      <input type="number" id="totalWorkers" value="10" min="1" style="width:70px" oninput="autoSaveBar()">
       <span id="uphHint" style="font-size:13px;color:var(--mut)">→ 실생산 102대</span>
       <span class="grow"></span>
       <button class="btn sml warn" onclick="resetRows()">초기화</button>
@@ -642,6 +642,20 @@ function updNum(i,k,v){
 }
 
 /* ─── C/T 저장/불러오기 ─────────────────────── */
+function autoSaveBar(){
+  const key='conv_workers_'+curLine+'_'+curSub;
+  const raw=localStorage.getItem(key);
+  const saved=raw?JSON.parse(raw):{};
+  saved.bar={
+    workMin:document.getElementById('workMin').value,
+    baseProd:document.getElementById('baseProd').value,
+    pitchRatio:document.getElementById('pitchRatio').value,
+    targetUPH:document.getElementById('targetUPH').value,
+    totalWorkers:document.getElementById('totalWorkers').value
+  };
+  if(!saved.rows)saved.rows=[];
+  localStorage.setItem(key,JSON.stringify(saved));
+}
 function autoSaveCT(){
   const key='conv_ct_'+curLine+'_'+curSub;
   const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null}));
