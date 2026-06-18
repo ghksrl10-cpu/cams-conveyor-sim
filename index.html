@@ -660,10 +660,10 @@ function loadCTData(){
 /* ─── 인원 저장/불러오기 (라인 고정) ────────── */
 function saveWorkers(){
   const key='conv_workers_'+curLine+'_'+curSub;
-  const data=G().rows.map(r=>({name:r.name,workers:r.workers}));
+  const data=G().rows.map(r=>({name:r.name,workers:r.workers,empty:r.empty}));
   localStorage.setItem(key,JSON.stringify(data));
   const el=document.getElementById('lineSaveNote');
-  el.textContent='👷 인원 저장됨 '+new Date().toLocaleTimeString('ko');
+  el.textContent='👷 인원·공백 저장됨 '+new Date().toLocaleTimeString('ko');
   setTimeout(()=>el.textContent='',3000);
 }
 function loadWorkers(){
@@ -674,7 +674,7 @@ function loadWorkers(){
   const rows=G().rows;
   data.forEach(d=>{
     const row=rows.find(r=>r.name===d.name);
-    if(row)row.workers=d.workers||1;
+    if(row){row.workers=d.workers||1;if(d.empty!==undefined)row.empty=d.empty;}
   });
 }
 function loadLineData(){
