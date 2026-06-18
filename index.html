@@ -301,7 +301,7 @@
 
     <div class="bar">
       <label>가동시간(분)</label>
-      <input type="number" id="workMin" value="480" min="1">
+      <input type="number" id="workMin" value="460" min="1">
       <label>기준 생산량(대/일)</label>
       <input type="number" id="baseProd" value="205" min="1" oninput="calcPitch()">
       <label>공피치</label>
@@ -559,7 +559,7 @@ function buildStabs(){
 function calcPitch(){
   const base=+document.getElementById('baseProd').value||205;
   const n=+document.getElementById('pitchRatio').value;
-  const wm=+document.getElementById('workMin').value||480;
+  const wm=+document.getElementById('workMin').value||460;
   const actualProd=n===0?base:Math.round(base*n/(n+1));
   const pitchSec=(wm*60/actualProd).toFixed(1);
   const uph=Math.round(3600/pitchSec);
@@ -569,7 +569,7 @@ function calcPitch(){
 }
 function syncFromUPH(){
   const uph=+document.getElementById('targetUPH').value||1;
-  const wm=+document.getElementById('workMin').value||480;
+  const wm=+document.getElementById('workMin').value||460;
   const pitchSec=3600/uph;
   const actualProd=Math.floor(wm*60/pitchSec);
   document.getElementById('uphHint').textContent='→ 실생산 '+actualProd+'대/일 · 공피치 '+pitchSec.toFixed(1)+'초';
@@ -579,12 +579,12 @@ function getPitchSec(){
   if(uph>0) return 3600/uph;
   const base=+document.getElementById('baseProd').value||205;
   const n=+document.getElementById('pitchRatio').value;
-  const wm=+document.getElementById('workMin').value||480;
+  const wm=+document.getElementById('workMin').value||460;
   return wm*60/(n===0?base:Math.round(base*n/(n+1)));
 }
 function getActualProd(){
   const uph=+document.getElementById('targetUPH').value||0;
-  const wm=+document.getElementById('workMin').value||480;
+  const wm=+document.getElementById('workMin').value||460;
   if(uph>0) return Math.floor(wm*60/(3600/uph));
   const base=+document.getElementById('baseProd').value||205;
   const n=+document.getElementById('pitchRatio').value;
@@ -903,7 +903,7 @@ function closeDist(){document.getElementById('distModal').classList.remove('show
 function runSim(){
   const s=G();
   const pitch=getPitchSec();
-  const wm=+document.getElementById('workMin').value||480;
+  const wm=+document.getElementById('workMin').value||460;
   const tU=getActualProd();
   const n=+document.getElementById('pitchRatio').value||1;
   const base=+document.getElementById('baseProd').value||205;
@@ -1021,7 +1021,7 @@ function runSim(){
 function saveScenario(){
   const name=prompt('시나리오 이름:','시나리오 '+(scenarios.length+1));
   if(!name)return;
-  const s=G(),pitch=getPitchSec(),wm=+document.getElementById('workMin').value||480,tU=getActualProd();
+  const s=G(),pitch=getPitchSec(),wm=+document.getElementById('workMin').value||460,tU=getActualProd();
   const n=+document.getElementById('pitchRatio').value||1,base=+document.getElementById('baseProd').value||205;
   const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
   const active=s.rows.filter(r=>!r.empty&&r.ct>0);
