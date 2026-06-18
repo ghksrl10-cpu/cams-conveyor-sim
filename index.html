@@ -1249,6 +1249,10 @@ buildStabs();render();renderMain();renderScen();calcPitch();renderCT();
         <input class="dadd" type="number" id="ctcHW" min="0" value="0" oninput="calcCTC()">
       </div>
       <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">바코드 스캔 <span style="color:var(--mut);font-size:12px">×3초</span></div>
+        <input class="dadd" type="number" id="ctcBarcode" min="0" value="0" oninput="calcCTC()">
+      </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
         <div class="dname">PAS수 (BSW) <span style="color:var(--mut);font-size:12px">×5초</span></div>
         <input class="dadd" type="number" id="ctcPasAmt" min="0" value="0" oninput="calcCTC()">
       </div>
@@ -1278,11 +1282,6 @@ buildStabs();render();renderMain();renderScen();calcPitch();renderCT();
       <div class="dist-row" style="border:none;padding:4px 0">
         <div class="dname">전장품 TEST<br><span style="color:var(--mut);font-size:11px">3+항목×1.5초</span></div>
         <input class="dadd" type="number" id="ctcTestItem" min="0" value="0" oninput="calcCTC()" placeholder="항목수">
-      </div>
-      <!-- 바코드 스캔 -->
-      <div class="dist-row" style="border:none;padding:4px 0">
-        <div class="dname">바코드 스캔 <span style="color:var(--mut);font-size:12px">×3초</span></div>
-        <input class="dadd" type="number" id="ctcBarcode" min="0" value="0" oninput="calcCTC()" placeholder="개수">
       </div>
     </div>
 
