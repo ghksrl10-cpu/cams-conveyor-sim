@@ -618,7 +618,7 @@ function render(){
       <td class="${emC}"><input value="${esc(r.group||'')}" oninput="upd(${i},'group',this.value)" placeholder="—" style="text-align:center;font-weight:700;color:var(--warn)"></td>
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea rows="${span>1?4:2}" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
       <td style="background:${r.empty?'#1a1040':'var(--hd2)'};text-align:center"><input type="checkbox" ${r.empty?'checked':''} onchange="toggleEmpty(${i},this.checked)"></td>
-      ${r.ctSpan===0?'':`<td class="${r.empty?'off':ctCls}" ${(r.ctSpan||1)>1?`rowspan="${r.ctSpan}" style="vertical-align:middle"`:''}><input type="number" value="${r.ct||''}" min="0" step="0.1" onchange="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0"></td>`}
+      ${r.ctSpan===0?'':`<td class="${r.empty?'off':ctCls}" ${(r.ctSpan||1)>1?`rowspan="${r.ctSpan}" style="vertical-align:middle;padding:2px 4px"`:'style="padding:2px 4px"'}><div style="display:flex;align-items:center;gap:3px"><input type="number" value="${r.ct||''}" min="0" step="0.1" onchange="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0" style="flex:1;min-width:50px"><button class="btn sml" onclick="openCTCalc(${i})" style="padding:3px 6px;font-size:12px;flex-shrink:0" ${r.empty?'disabled':''}>🧮</button></div></td>`}
       ${r.workerSpan===0?'':`<td class="${offC}" ${(r.workerSpan||1)>1?`rowspan="${r.workerSpan}" style="vertical-align:middle;text-align:center"`:''}><input type="number" value="${r.workers}" min="1" onchange="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>`}
       ${r.taskSpan===0?'':`<td class="val ${r.empty?'off':ctCls}" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${r.empty?'var(--mut)':''}"`:''}>${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>`}
       ${r.taskSpan===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
@@ -659,6 +659,78 @@ function toggleEmpty(i,v){G().rows[i].empty=v;render();}
 function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:''});render();}
 function delRow(i){if(!confirm('삭제하시겠습니까?'))return;G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();}
 function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[curLine][curSub]={rows:makeRows(curLine,curSub)};render();}
+
+/* ─── 기아 인정표 C/T 계산기 ─────────────────── */
+let _ctCalcIdx=-1;
+function openCTCalc(i){
+  _ctCalcIdx=i;
+  const r=G().rows[i];
+  document.getElementById('ctcProcName').textContent=r.name||('공정 '+(i+1));
+  // 입력 초기화
+  ['ctcMove','ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
+   'ctcWireSensor','ctcWireClip','ctcTestItem','ctcPadCnt','ctcPadLen',
+   'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.value=el.type==='checkbox'?false:0;});
+  document.getElementById('ctcBrktType').value='screw';
+  document.getElementById('ctcPadType').value='cnt';
+  document.getElementById('ctcLogoType').value='none';
+  document.getElementById('ctcBlankcvr').checked=false;
+  document.getElementById('ctcTowing').checked=false;
+  calcCTC();
+  document.getElementById('ctcModal').classList.add('show');
+}
+function calcCTC(){
+  let t=0;
+  const v=id=>+(document.getElementById(id)?.value||0);
+  const chk=id=>document.getElementById(id)?.checked;
+
+  if(chk('ctcMove'))  t+=10;
+  if(chk('ctcTowing'))t+=5;
+  if(chk('ctcBlankcvr'))t+=32;
+  t+=v('ctcRunner')*2;
+  t+=v('ctcHook')*1.8;
+  t+=v('ctcHW')*4.5;
+  // 기본값
+  const base=v('ctcBase'); t+=base;
+  // PAS
+  t+=v('ctcPasAmt')*5;
+  // WIRING
+  t+=v('ctcWireSensor')*3+v('ctcWireClip')*1.8;
+  if(v('ctcWireSensor')||v('ctcWireClip')) t+=5;
+  // 전장품 TEST
+  const ti=v('ctcTestItem'); if(ti) t+=3+1.5*ti;
+  // PAD
+  const padType=document.getElementById('ctcPadType')?.value;
+  const pc=v('ctcPadCnt'),pl=v('ctcPadLen');
+  if(padType==='cnt'&&pc) t+=4+3*(pc-1);
+  if(padType==='len'&&pl) t+=4+0.01*pl;
+  // BRKT/리플렉터
+  const bc=v('ctcBrktCnt'),bh=v('ctcBrktHW');
+  const btype=document.getElementById('ctcBrktType')?.value;
+  if(bc||bh) t+=(btype==='screw'?4.5*bc+4.5*bh:4.5*bc+3*bh);
+  // MLDG
+  const mc=v('ctcMldgCnt'),mh=v('ctcMldgHW');
+  if(mc||mh) t+=5*(mc+mh);
+  // LIP BPR / REINF BPR
+  const lc=v('ctcLipCnt'),lh=v('ctcLipHW');
+  if(lc||lh) t+=5*(lc+lh);
+  // H-LOGO
+  const logo=document.getElementById('ctcLogoType')?.value;
+  if(logo==='tape') t+=15;
+  if(logo==='clip') t+=20;
+
+  t=Math.round(t*10)/10;
+  document.getElementById('ctcResult').textContent=t.toFixed(1)+'초';
+  document.getElementById('ctcResultVal').value=t;
+}
+function applyCTC(){
+  const val=+document.getElementById('ctcResultVal').value||0;
+  if(!val)return;
+  G().rows[_ctCalcIdx].ct=val;
+  closeCTCalc();
+  render();
+}
+function closeCTCalc(){document.getElementById('ctcModal').classList.remove('show');}
 
 /* ─── 공수 배분 ───────────────────────────────── */
 let _distIdx=-1;
@@ -1103,6 +1175,143 @@ function deleteCTSave(){
 /* ─── 초기화 ──────────────────────────────────── */
 buildStabs();render();renderMain();renderScen();calcPitch();renderCT();
 </script>
+
+<!-- ===== 기아 인정표 C/T 계산기 모달 ===== -->
+<div class="modal-bg" id="ctcModal" onclick="if(event.target===this)closeCTCalc()">
+  <div class="modal" style="width:580px">
+    <h2>🧮 C/T 계산기 (기아 인정표)</h2>
+    <div class="msub">공정: <b id="ctcProcName"></b></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px">
+
+      <!-- 기본 항목 -->
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px">
+        <input type="checkbox" id="ctcMove" onchange="calcCTC()" style="accent-color:var(--blue)">
+        조립공정간 이동 <span style="color:var(--mut);font-size:12px">+10초</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px">
+        <input type="checkbox" id="ctcTowing" onchange="calcCTC()" style="accent-color:var(--blue)">
+        TOWING CAP 조립 <span style="color:var(--mut);font-size:12px">+5초</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px">
+        <input type="checkbox" id="ctcBlankcvr" onchange="calcCTC()" style="accent-color:var(--blue)">
+        BLANK CVR 조립 <span style="color:var(--mut);font-size:12px">+32초</span>
+      </label>
+
+      <!-- 기본값 선택 -->
+      <div style="display:flex;align-items:center;gap:8px;font-size:14px">
+        <span>기본값</span>
+        <select id="ctcBase" onchange="calcCTC()" style="background:#0f1117;border:1px solid var(--bd);border-radius:6px;color:var(--ink);padding:4px 8px;font-size:13px">
+          <option value="0">없음</option>
+          <option value="5">5초 (조립류)</option>
+          <option value="10">10초 (B/BEAM 류)</option>
+          <option value="20">20초 (STEP 류)</option>
+          <option value="3">3초 (바코드)</option>
+          <option value="15">15초 (이중방지검사)</option>
+          <option value="45">45초 (검사/적재)</option>
+          <option value="10">10초 (포장해체)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--bd);margin:14px 0"></div>
+
+    <!-- 수량 입력 항목 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">RUNNER수 <span style="color:var(--mut);font-size:12px">×2초</span></div>
+        <input class="dadd" type="number" id="ctcRunner" min="0" value="0" oninput="calcCTC()">
+      </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">HOOK수 <span style="color:var(--mut);font-size:12px">×1.8초</span></div>
+        <input class="dadd" type="number" id="ctcHook" min="0" value="0" oninput="calcCTC()">
+      </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">HW수 (너트/볼트/육각) <span style="color:var(--mut);font-size:12px">×4.5초</span></div>
+        <input class="dadd" type="number" id="ctcHW" min="0" value="0" oninput="calcCTC()">
+      </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">PAS수 (BSW) <span style="color:var(--mut);font-size:12px">×5초</span></div>
+        <input class="dadd" type="number" id="ctcPasAmt" min="0" value="0" oninput="calcCTC()">
+      </div>
+
+      <!-- LIP BPR / REINF BPR -->
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">LIP수+HW수 <span style="color:var(--mut);font-size:12px">×5초</span></div>
+        <input class="dadd" type="number" id="ctcLipCnt" min="0" value="0" oninput="calcCTC()" placeholder="LIP">
+        <input class="dadd" type="number" id="ctcLipHW" min="0" value="0" oninput="calcCTC()" placeholder="HW">
+      </div>
+
+      <!-- MLDG -->
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">MLDG수+HW수 <span style="color:var(--mut);font-size:12px">×5초</span></div>
+        <input class="dadd" type="number" id="ctcMldgCnt" min="0" value="0" oninput="calcCTC()" placeholder="MLDG">
+        <input class="dadd" type="number" id="ctcMldgHW" min="0" value="0" oninput="calcCTC()" placeholder="HW">
+      </div>
+
+      <!-- WIRING -->
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">WIRING<br><span style="color:var(--mut);font-size:11px">5+센서×3+CLIP×1.8</span></div>
+        <input class="dadd" type="number" id="ctcWireSensor" min="0" value="0" oninput="calcCTC()" placeholder="센서수">
+        <input class="dadd" type="number" id="ctcWireClip" min="0" value="0" oninput="calcCTC()" placeholder="CLIP수">
+      </div>
+
+      <!-- 전장품 TEST -->
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">전장품 TEST<br><span style="color:var(--mut);font-size:11px">3+항목×1.5초</span></div>
+        <input class="dadd" type="number" id="ctcTestItem" min="0" value="0" oninput="calcCTC()" placeholder="항목수">
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--bd);margin:14px 0"></div>
+
+    <!-- PAD / BRKT / H-LOGO -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+      <div>
+        <div style="font-size:12px;color:var(--mut);margin-bottom:6px">PAD 부착</div>
+        <select id="ctcPadType" onchange="calcCTC()" style="background:#0f1117;border:1px solid var(--bd);border-radius:6px;color:var(--ink);padding:4px 8px;font-size:13px;width:100%;margin-bottom:6px">
+          <option value="cnt">개수 기준 (4+3×(PAD수-1))</option>
+          <option value="len">길이 기준 (4+0.01×길이mm)</option>
+        </select>
+        <input class="dadd" type="number" id="ctcPadCnt" min="0" value="0" oninput="calcCTC()" placeholder="PAD 개수" style="width:48%">
+        <input class="dadd" type="number" id="ctcPadLen" min="0" value="0" oninput="calcCTC()" placeholder="PAD 길이(mm)" style="width:48%">
+      </div>
+
+      <div>
+        <div style="font-size:12px;color:var(--mut);margin-bottom:6px">BRKT/리플렉터 조립</div>
+        <select id="ctcBrktType" onchange="calcCTC()" style="background:#0f1117;border:1px solid var(--bd);border-radius:6px;color:var(--ink);padding:4px 8px;font-size:13px;width:100%;margin-bottom:6px">
+          <option value="screw">T/SCREW (4.5×BRKT+4.5×HW)</option>
+          <option value="ribet">RIBET (4.5×BRKT+3×HW)</option>
+        </select>
+        <input class="dadd" type="number" id="ctcBrktCnt" min="0" value="0" oninput="calcCTC()" placeholder="BRKT수" style="width:48%">
+        <input class="dadd" type="number" id="ctcBrktHW" min="0" value="0" oninput="calcCTC()" placeholder="HW수" style="width:48%">
+      </div>
+
+      <div>
+        <div style="font-size:12px;color:var(--mut);margin-bottom:6px">H-LOGO</div>
+        <select id="ctcLogoType" onchange="calcCTC()" style="background:#0f1117;border:1px solid var(--bd);border-radius:6px;color:var(--ink);padding:4px 8px;font-size:13px;width:100%">
+          <option value="none">없음</option>
+          <option value="tape">양면TAPE (+15초)</option>
+          <option value="clip">CLIP조립 (+20초)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 결과 -->
+    <div class="dist-total" style="margin-top:18px">
+      <span style="font-size:15px;font-weight:700">계산 결과</span>
+      <b id="ctcResult" style="font-size:24px;color:var(--ok)">0.0초</b>
+    </div>
+    <input type="hidden" id="ctcResultVal" value="0">
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn sml pri" onclick="applyCTC()">✅ 이 값으로 C/T 적용</button>
+      <button class="btn sml warn" onclick="closeCTCalc()">취소</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== 공수 배분 모달 ===== -->
 <div class="modal-bg" id="distModal" onclick="if(event.target===this)closeDist()">
