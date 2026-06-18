@@ -640,7 +640,7 @@ function updNum(i,k,v){G().rows[i][k]=v||0;render();}
 /* ─── C/T 저장/불러오기 ─────────────────────── */
 function saveCTData(){
   const key='conv_ct_'+curLine+'_'+curSub;
-  const data=G().rows.map(r=>({name:r.name,ct:r.ct}));
+  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null}));
   localStorage.setItem(key,JSON.stringify(data));
   const sub=LINE_DEF[curLine].subs[curSub];
   const el=document.getElementById('lineSaveNote');
@@ -655,7 +655,7 @@ function loadCTData(){
   const rows=G().rows;
   data.forEach(d=>{
     const row=rows.find(r=>r.name===d.name);
-    if(row)row.ct=d.ct||0;
+    if(row){row.ct=d.ct||0;if(d.ctFormula)row.ctFormula=d.ctFormula;}
   });
 }
 /* ─── 인원 저장/불러오기 (라인 고정) ────────── */
@@ -715,18 +715,20 @@ function openCTCalc(i){
   _ctCalcIdx=i;
   const r=G().rows[i];
   document.getElementById('ctcProcName').textContent=r.name||('공정 '+(i+1));
-  // 입력 초기화
-  ['ctcMove','ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
+  const f=r.ctFormula||{};
+  // 저장된 값 또는 초기값 복원
+  const numIds=['ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
    'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcPadCnt','ctcPadLen',
-   'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW']
-    .forEach(id=>{const el=document.getElementById(id);if(el)el.value=el.type==='checkbox'?false:0;});
-  document.getElementById('ctcBrktType').value='screw';
-  document.getElementById('ctcPadType').value='cnt';
-  document.getElementById('ctcLogoType').value='none';
-  document.getElementById('ctcBlankcvr').checked=false;
-  document.getElementById('ctcTowing').checked=false;
-  // 체결수량 자동 파싱 → HW수 채움
-  if(r.fastener){
+   'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW'];
+  numIds.forEach(id=>{const el=document.getElementById(id);if(el)el.value=f[id]!=null?f[id]:0;});
+  document.getElementById('ctcMove').checked=f.ctcMove||false;
+  document.getElementById('ctcTowing').checked=f.ctcTowing||false;
+  document.getElementById('ctcBlankcvr').checked=f.ctcBlankcvr||false;
+  document.getElementById('ctcBrktType').value=f.ctcBrktType||'screw';
+  document.getElementById('ctcPadType').value=f.ctcPadType||'cnt';
+  document.getElementById('ctcLogoType').value=f.ctcLogoType||'none';
+  // 체결수량 자동 파싱 → HW수 채움 (저장값 없을 때만)
+  if(r.fastener&&!r.ctFormula){
     let hwTotal=0;
     const matches=r.fastener.match(/(\d+)\s*EA/gi)||[];
     matches.forEach(m=>{hwTotal+=parseInt(m);});
@@ -791,7 +793,21 @@ function calcCTC(){
 function applyCTC(){
   const val=+document.getElementById('ctcResultVal').value||0;
   if(!val)return;
-  G().rows[_ctCalcIdx].ct=val;
+  const row=G().rows[_ctCalcIdx];
+  row.ct=val;
+  // 입력값 저장
+  const numIds=['ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
+    'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcPadCnt','ctcPadLen',
+    'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW'];
+  const f={};
+  numIds.forEach(id=>{f[id]=+document.getElementById(id)?.value||0;});
+  f.ctcMove=document.getElementById('ctcMove').checked;
+  f.ctcTowing=document.getElementById('ctcTowing').checked;
+  f.ctcBlankcvr=document.getElementById('ctcBlankcvr').checked;
+  f.ctcBrktType=document.getElementById('ctcBrktType').value;
+  f.ctcPadType=document.getElementById('ctcPadType').value;
+  f.ctcLogoType=document.getElementById('ctcLogoType').value;
+  row.ctFormula=f;
   closeCTCalc();
   render();
 }
