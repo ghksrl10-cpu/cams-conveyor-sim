@@ -642,8 +642,9 @@ function saveCTData(){
   const key='conv_ct_'+curLine+'_'+curSub;
   const data=G().rows.map(r=>({name:r.name,ct:r.ct}));
   localStorage.setItem(key,JSON.stringify(data));
+  const sub=LINE_DEF[curLine].subs[curSub];
   const el=document.getElementById('lineSaveNote');
-  el.textContent='✅ C/T 저장됨 '+new Date().toLocaleTimeString('ko');
+  el.textContent='✅ ['+sub+'] C/T 저장됨 '+new Date().toLocaleTimeString('ko');
   setTimeout(()=>el.textContent='',3000);
 }
 function loadCTData(){
@@ -664,7 +665,8 @@ function saveWorkers(){
   const data={totalWorkers:totalW,rows:G().rows.map(r=>({name:r.name,workers:r.workers,empty:r.empty}))};
   localStorage.setItem(key,JSON.stringify(data));
   const el=document.getElementById('lineSaveNote');
-  el.textContent='👷 인원·공백 저장됨 '+new Date().toLocaleTimeString('ko');
+  const sub=LINE_DEF[curLine].subs[curSub];
+  el.textContent='👷 ['+sub+'] 인원·공백 저장됨 '+new Date().toLocaleTimeString('ko');
   setTimeout(()=>el.textContent='',3000);
 }
 function loadWorkers(){
