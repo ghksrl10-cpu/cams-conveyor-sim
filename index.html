@@ -817,6 +817,7 @@ function collectFormula(){
 function saveFormula(){
   if(_ctCalcIdx<0)return;
   G().rows[_ctCalcIdx].ctFormula=collectFormula();
+  autoSaveCT();
   const el=document.getElementById('ctcSaveNote');
   if(el){el.textContent='✅ 수식 저장됨';setTimeout(()=>el.textContent='',2000);}
 }
