@@ -928,7 +928,7 @@ function runSim(){
   const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
   const active=s.rows.filter(r=>!r.empty&&r.ct>0);
   if(!active.length){alert('C/T가 입력된 유효 공정이 없습니다.');return;}
-  const res=active.map(r=>{const rt=r.ct/(r.workers||1);return{...r,realCT:rt,load:rt/pitch*100,isBN:rt>pitch};});
+  const res=active.map(r=>{const sp=(r.taskSpan||1);const ep=pitch*sp;const rt=(sp>1)?r.ct:r.ct/(r.workers||1);return{...r,realCT:rt,effPitch:ep,load:rt/ep*100,isBN:rt>ep};});
   const bn=res.reduce((a,b)=>a.realCT>b.realCT?a:b);
   const lbEff=res.reduce((a,r)=>a+r.realCT,0)/(bn.realCT*res.length)*100;
   const actU=Math.round(3600/bn.realCT),daily=Math.floor(wm*60/bn.realCT);
@@ -943,12 +943,12 @@ function runSim(){
   <div class="kpi-row">
     <div class="kpi blue"><div class="kl">공피치 비율</div><div class="kv">${n}:1</div><div class="ks">기준 ${base}대 → 목표 ${tU}대</div></div>
     <div class="kpi blue"><div class="kl">공피치(초)</div><div class="kv">${pitchDisp}<span style="font-size:13px">초</span></div><div class="ks">UPH ${actU}</div></div>
-    <div class="kpi ${bn.realCT<=pitch?'ok':'ng'}"><div class="kl">병목 C/T</div><div class="kv">${bn.realCT.toFixed(1)}<span style="font-size:13px">초</span></div><div class="ks">${esc(bn.name)}</div></div>
+    <div class="kpi ${bn.realCT<=bn.effPitch?'ok':'ng'}"><div class="kl">병목 C/T</div><div class="kv">${bn.realCT.toFixed(1)}<span style="font-size:13px">초</span></div><div class="ks">${esc(bn.name)}</div></div>
     <div class="kpi ${pOk?'ok':'ng'}"><div class="kl">일 생산량</div><div class="kv">${daily.toLocaleString()}</div><div class="ks">목표 ${tU}대 ${pOk?'✅':'❌'}</div></div>
     <div class="kpi ${lbC}"><div class="kl">라인밸런스</div><div class="kv">${lbEff.toFixed(1)}<span style="font-size:13px">%</span></div><div class="ks">${lbEff>=85?'양호':lbEff>=70?'개선필요':'불량'}</div></div>
     <div class="kpi ${utilCls}"><div class="kl">1차 가동율</div><div class="kv">${util1.toFixed(1)}<span style="font-size:13px">%</span></div><div class="ks">투입 ${totalWorkers}명 · ΣC/T ${totalCT.toFixed(0)}초</div></div>
     <div class="kpi blue"><div class="kl">유효 공정</div><div class="kv">${res.length}</div><div class="ks">공백 ${s.rows.filter(r=>r.empty).length}개 제외</div></div>
-    <div class="kpi ${bn.realCT<=pitch?'ok':'ng'}"><div class="kl">공피치 정상</div><div class="kv">${bn.realCT<=pitch?'✅ 정상':'❌ 불량'}</div><div class="ks">병목 ${bn.realCT.toFixed(1)}초 ${bn.realCT<=pitch?'≤':'>'} 피치 ${pitchDisp}초</div></div>
+    <div class="kpi ${bn.realCT<=bn.effPitch?'ok':'ng'}"><div class="kl">공피치 정상</div><div class="kv">${bn.realCT<=bn.effPitch?'✅ 정상':'❌ 불량'}</div><div class="ks">병목 ${bn.realCT.toFixed(1)}초 ${bn.realCT<=bn.effPitch?'≤':'>'} 유효피치 ${bn.effPitch.toFixed(1)}초</div></div>
   </div></div>`;
 
   const maxL=Math.max(...res.map(r=>r.load),100);
@@ -964,7 +964,7 @@ function runSim(){
     <th>C/T</th><th>인원</th><th>실C/T</th><th>부하율</th><th>여유시간</th><th>상태</th>
   </tr></thead><tbody>`;
   res.forEach(r=>{
-    const slk=(pitch-r.realCT).toFixed(1),sc=r.isBN?'ng-c':r.load>85?'warn-c':'ok-c';
+    const slk=(r.effPitch-r.realCT).toFixed(1),sc=r.isBN?'ng-c':r.load>85?'warn-c':'ok-c';
     html+=`<tr>
       <td style="font-weight:800;color:var(--blue)">${r.conv}</td><td style="font-weight:700">${esc(r.name)}</td>
       <td style="text-align:left;padding:0 8px">${esc(r.task||'')}</td>
@@ -985,8 +985,8 @@ function runSim(){
   html+=`</div></div>`;
 
   const sg=[];
-  res.filter(r=>r.isBN).forEach(r=>sg.push(`🔴 <b>${esc(r.name)}</b>${r.task?' ('+esc(r.task)+')':''} — 실C/T ${r.realCT.toFixed(1)}초 > 피치 ${pitch}초. 인원 추가 또는 설비 증설 검토`));
-  res.filter(r=>!r.isBN&&(pitch-r.realCT)/pitch*100>30).forEach(r=>sg.push(`💡 <b>${esc(r.name)}</b> — 여유율 ${((pitch-r.realCT)/pitch*100).toFixed(0)}%. 인원 재배치 또는 공정 통합 검토`));
+  res.filter(r=>r.isBN).forEach(r=>sg.push(`🔴 <b>${esc(r.name)}</b>${r.task?' ('+esc(r.task)+')':''} — 실C/T ${r.realCT.toFixed(1)}초 > 유효피치 ${r.effPitch.toFixed(1)}초. 인원 추가 또는 설비 증설 검토`));
+  res.filter(r=>!r.isBN&&(r.effPitch-r.realCT)/r.effPitch*100>30).forEach(r=>sg.push(`💡 <b>${esc(r.name)}</b> — 여유율 ${((r.effPitch-r.realCT)/r.effPitch*100).toFixed(0)}%. 인원 재배치 또는 공정 통합 검토`));
   if(lbEff<85)sg.push(`📊 라인밸런스 ${lbEff.toFixed(1)}% (목표 85%) — 공정 재편성 필요`);
   // 그룹별 분석 (다공정 담당 작업자)
   const grpMap={};
@@ -1043,7 +1043,7 @@ function saveScenario(){
   const n=+document.getElementById('pitchRatio').value||1,base=+document.getElementById('baseProd').value||205;
   const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
   const active=s.rows.filter(r=>!r.empty&&r.ct>0);
-  let bnCT=0;const pc=active.map(r=>{const rt=r.ct/(r.parallel||1)/(r.workers||1);if(rt>bnCT)bnCT=rt;return rt;});
+  let bnCT=0;const pc=active.map(r=>{const sp=(r.taskSpan||1);const ep=pitch*sp;const rt=(sp>1)?r.ct:r.ct/(r.parallel||1)/(r.workers||1);if(rt>bnCT)bnCT=rt;return rt;});
   const uph=bnCT>0?Math.round(3600/bnCT):0,daily=bnCT>0?Math.floor(wm*60/bnCT):0;
   const lb=active.length>0?pc.reduce((a,v)=>a+v,0)/(bnCT*active.length)*100:0;
   scenarios.push({id:Date.now(),name,lbl,ratio:n+':1',base,pitch:pitch.toFixed(1),cnt:active.length,uph,daily,lb:lb.toFixed(1),bnCT:bnCT.toFixed(1),at:new Date().toLocaleString('ko')});
