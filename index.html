@@ -803,7 +803,7 @@ function calcCTC(){
 }
 function collectFormula(){
   const numIds=['ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
-    'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcPadCnt','ctcPadLen',
+    'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcTorque','ctcPadCnt','ctcPadLen',
     'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW','ctcMove'];
   const f={};
   numIds.forEach(id=>{f[id]=+document.getElementById(id)?.value||0;});
