@@ -741,15 +741,12 @@ function openCTCalc(i){
   const f=r.ctFormula||{};
   // 저장된 값 또는 초기값 복원
   const numIds=['ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
-   'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcTorque','ctcPadCnt','ctcPadLen',
+   'ctcUnpack','ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcTorque','ctcPadCnt','ctcPadLen',
    'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW'];
   numIds.forEach(id=>{const el=document.getElementById(id);if(el)el.value=f[id]!=null?f[id]:0;});
   document.getElementById('ctcMove').value=f.ctcMove!=null?f.ctcMove:0;
-  document.getElementById('ctcTowing').checked=f.ctcTowing||false;
-  document.getElementById('ctcBlankcvr').checked=f.ctcBlankcvr||false;
   document.getElementById('ctcBrktType').value=f.ctcBrktType||'screw';
   document.getElementById('ctcPadType').value=f.ctcPadType||'cnt';
-  document.getElementById('ctcLogoType').value=f.ctcLogoType||'none';
   // 체결수량 자동 파싱 → HW수 채움 (저장값 없을 때만)
   if(r.fastener&&!r.ctFormula){
     let hwTotal=0;
@@ -773,8 +770,7 @@ function calcCTC(){
   const chk=id=>document.getElementById(id)?.checked;
 
   t+=v('ctcMove')*10;
-  if(chk('ctcTowing'))t+=5;
-  if(chk('ctcBlankcvr'))t+=32;
+  t+=v('ctcUnpack')*10;
   t+=v('ctcRunner')*2;
   t+=v('ctcHook')*1.8;
   t+=v('ctcHW')*4.5;
@@ -817,15 +813,12 @@ function calcCTC(){
 }
 function collectFormula(){
   const numIds=['ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
-    'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcTorque','ctcPadCnt','ctcPadLen',
+    'ctcUnpack','ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcTorque','ctcPadCnt','ctcPadLen',
     'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW','ctcMove'];
   const f={};
   numIds.forEach(id=>{f[id]=+document.getElementById(id)?.value||0;});
-  f.ctcTowing=document.getElementById('ctcTowing').checked;
-  f.ctcBlankcvr=document.getElementById('ctcBlankcvr').checked;
   f.ctcBrktType=document.getElementById('ctcBrktType').value;
   f.ctcPadType=document.getElementById('ctcPadType').value;
-  f.ctcLogoType=document.getElementById('ctcLogoType').value;
   return f;
 }
 function saveFormula(){
@@ -1305,14 +1298,10 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
         <div class="dname">조립공정간 이동 <span style="color:var(--mut);font-size:12px">×10초</span></div>
         <input class="dadd" type="number" id="ctcMove" min="0" value="0" oninput="calcCTC()">
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:14px">
-        <input type="checkbox" id="ctcTowing" onchange="calcCTC()" style="accent-color:var(--blue)">
-        TOWING CAP 조립 <span style="color:var(--mut);font-size:12px">+5초</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;font-size:14px">
-        <input type="checkbox" id="ctcBlankcvr" onchange="calcCTC()" style="accent-color:var(--blue)">
-        BLANK CVR 조립 <span style="color:var(--mut);font-size:12px">+32초</span>
-      </label>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">포장 해체 <span style="color:var(--mut);font-size:12px">×10초</span></div>
+        <input class="dadd" type="number" id="ctcUnpack" min="0" value="0" oninput="calcCTC()">
+      </div>
 
       <!-- 기본값 선택 -->
       <div style="display:flex;align-items:center;gap:8px;font-size:14px">
@@ -1420,14 +1409,6 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
         <input class="dadd" type="number" id="ctcBrktHW" min="0" value="0" oninput="calcCTC()" placeholder="HW수" style="width:48%">
       </div>
 
-      <div>
-        <div style="font-size:12px;color:var(--mut);margin-bottom:6px">H-LOGO</div>
-        <select id="ctcLogoType" onchange="calcCTC()" style="background:#0f1117;border:1px solid var(--bd);border-radius:6px;color:var(--ink);padding:4px 8px;font-size:13px;width:100%">
-          <option value="none">없음</option>
-          <option value="tape">양면TAPE (+15초)</option>
-          <option value="clip">CLIP조립 (+20초)</option>
-        </select>
-      </div>
     </div>
 
     <!-- 결과 -->
