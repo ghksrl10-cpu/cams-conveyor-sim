@@ -695,7 +695,7 @@ function loadWorkers(){
   const rows=G().rows;
   data.forEach(d=>{
     const row=rows.find(r=>r.name===d.name);
-    if(row){row.workers=d.workers||1;if(d.empty!==undefined)row.empty=d.empty;}
+    if(row){row.workers=d.workers!=null?+d.workers:1;if(d.empty!==undefined)row.empty=d.empty;}
   });
 }
 function loadLineData(){
