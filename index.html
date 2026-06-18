@@ -676,6 +676,20 @@ function openCTCalc(i){
   document.getElementById('ctcLogoType').value='none';
   document.getElementById('ctcBlankcvr').checked=false;
   document.getElementById('ctcTowing').checked=false;
+  // 체결수량 자동 파싱 → HW수 채움
+  if(r.fastener){
+    let hwTotal=0;
+    const matches=r.fastener.match(/(\d+)\s*EA/gi)||[];
+    matches.forEach(m=>{hwTotal+=parseInt(m);});
+    if(hwTotal>0)document.getElementById('ctcHW').value=hwTotal;
+    // 체결수량 파싱 결과 표시
+    const fn=document.getElementById('ctcFastenerNote');
+    fn.textContent='📎 체결수량 자동인식: '+r.fastener+(hwTotal?' → HW '+hwTotal+'개 반영':'');
+    fn.style.display='block';
+  }else{
+    const fn=document.getElementById('ctcFastenerNote');
+    fn.textContent='';fn.style.display='none';
+  }
   calcCTC();
   document.getElementById('ctcModal').classList.add('show');
 }
@@ -1181,6 +1195,7 @@ buildStabs();render();renderMain();renderScen();calcPitch();renderCT();
   <div class="modal" style="width:580px">
     <h2>🧮 C/T 계산기 (기아 인정표)</h2>
     <div class="msub">공정: <b id="ctcProcName"></b></div>
+    <div id="ctcFastenerNote" style="font-size:12px;color:var(--ok);background:#052e16;border:1px solid #166534;border-radius:8px;padding:6px 10px;margin-bottom:10px;display:none"></div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px">
 
