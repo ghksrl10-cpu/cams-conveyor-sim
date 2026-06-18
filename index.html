@@ -721,7 +721,7 @@ function openCTCalc(i){
    'ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcPadCnt','ctcPadLen',
    'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW'];
   numIds.forEach(id=>{const el=document.getElementById(id);if(el)el.value=f[id]!=null?f[id]:0;});
-  document.getElementById('ctcMove').checked=f.ctcMove||false;
+  document.getElementById('ctcMove').value=f.ctcMove!=null?f.ctcMove:0;
   document.getElementById('ctcTowing').checked=f.ctcTowing||false;
   document.getElementById('ctcBlankcvr').checked=f.ctcBlankcvr||false;
   document.getElementById('ctcBrktType').value=f.ctcBrktType||'screw';
@@ -749,7 +749,7 @@ function calcCTC(){
   const v=id=>+(document.getElementById(id)?.value||0);
   const chk=id=>document.getElementById(id)?.checked;
 
-  if(chk('ctcMove'))  t+=10;
+  t+=v('ctcMove')*10;
   if(chk('ctcTowing'))t+=5;
   if(chk('ctcBlankcvr'))t+=32;
   t+=v('ctcRunner')*2;
@@ -801,7 +801,7 @@ function applyCTC(){
     'ctcBrktCnt','ctcBrktHW','ctcMldgCnt','ctcMldgHW','ctcLipCnt','ctcLipHW'];
   const f={};
   numIds.forEach(id=>{f[id]=+document.getElementById(id)?.value||0;});
-  f.ctcMove=document.getElementById('ctcMove').checked;
+  f.ctcMove=+document.getElementById('ctcMove').value||0;
   f.ctcTowing=document.getElementById('ctcTowing').checked;
   f.ctcBlankcvr=document.getElementById('ctcBlankcvr').checked;
   f.ctcBrktType=document.getElementById('ctcBrktType').value;
@@ -1267,10 +1267,10 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px">
 
       <!-- 기본 항목 -->
-      <label style="display:flex;align-items:center;gap:8px;font-size:14px">
-        <input type="checkbox" id="ctcMove" onchange="calcCTC()" style="accent-color:var(--blue)">
-        조립공정간 이동 <span style="color:var(--mut);font-size:12px">+10초</span>
-      </label>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">조립공정간 이동 <span style="color:var(--mut);font-size:12px">×10초</span></div>
+        <input class="dadd" type="number" id="ctcMove" min="0" value="0" oninput="calcCTC()">
+      </div>
       <label style="display:flex;align-items:center;gap:8px;font-size:14px">
         <input type="checkbox" id="ctcTowing" onchange="calcCTC()" style="accent-color:var(--blue)">
         TOWING CAP 조립 <span style="color:var(--mut);font-size:12px">+5초</span>
