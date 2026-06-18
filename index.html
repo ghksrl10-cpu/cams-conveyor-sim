@@ -661,8 +661,14 @@ function loadCTData(){
 /* ─── 인원 저장/불러오기 (라인 고정) ────────── */
 function saveWorkers(){
   const key='conv_workers_'+curLine+'_'+curSub;
-  const totalW=+document.getElementById('totalWorkers').value||1;
-  const data={totalWorkers:totalW,rows:G().rows.map(r=>({name:r.name,workers:r.workers,empty:r.empty}))};
+  const bar={
+    workMin:document.getElementById('workMin').value,
+    baseProd:document.getElementById('baseProd').value,
+    pitchRatio:document.getElementById('pitchRatio').value,
+    targetUPH:document.getElementById('targetUPH').value,
+    totalWorkers:document.getElementById('totalWorkers').value
+  };
+  const data={bar,rows:G().rows.map(r=>({name:r.name,workers:r.workers,empty:r.empty}))};
   localStorage.setItem(key,JSON.stringify(data));
   const el=document.getElementById('lineSaveNote');
   const sub=LINE_DEF[curLine].subs[curSub];
@@ -674,10 +680,18 @@ function loadWorkers(){
   const raw=localStorage.getItem(key);
   if(!raw)return;
   const saved=JSON.parse(raw);
-  // 구버전(배열) 호환
   const data=Array.isArray(saved)?saved:saved.rows||[];
-  if(!Array.isArray(saved)&&saved.totalWorkers)
+  if(!Array.isArray(saved)&&saved.bar){
+    const b=saved.bar;
+    if(b.workMin)   document.getElementById('workMin').value=b.workMin;
+    if(b.baseProd)  document.getElementById('baseProd').value=b.baseProd;
+    if(b.pitchRatio!==undefined) document.getElementById('pitchRatio').value=b.pitchRatio;
+    if(b.targetUPH) document.getElementById('targetUPH').value=b.targetUPH;
+    if(b.totalWorkers) document.getElementById('totalWorkers').value=b.totalWorkers;
+    calcPitch();
+  } else if(!Array.isArray(saved)&&saved.totalWorkers){
     document.getElementById('totalWorkers').value=saved.totalWorkers;
+  }
   const rows=G().rows;
   data.forEach(d=>{
     const row=rows.find(r=>r.name===d.name);
@@ -1224,7 +1238,7 @@ function deleteCTSave(){
 }
 
 /* ─── 초기화 ──────────────────────────────────── */
-buildStabs();render();renderMain();renderScen();calcPitch();renderCT();
+buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();renderCT();
 </script>
 
 <!-- ===== 기아 인정표 C/T 계산기 모달 ===== -->
