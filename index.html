@@ -674,6 +674,7 @@ function runSim(){
     <div class="kpi ${lbC}"><div class="kl">라인밸런스</div><div class="kv">${lbEff.toFixed(1)}<span style="font-size:13px">%</span></div><div class="ks">${lbEff>=85?'양호':lbEff>=70?'개선필요':'불량'}</div></div>
     <div class="kpi ${utilCls}"><div class="kl">1차 가동율</div><div class="kv">${util1.toFixed(1)}<span style="font-size:13px">%</span></div><div class="ks">투입 ${totalWorkers}명 · ΣC/T ${totalCT.toFixed(0)}초</div></div>
     <div class="kpi blue"><div class="kl">유효 공정</div><div class="kv">${res.length}</div><div class="ks">공백 ${s.rows.filter(r=>r.empty).length}개 제외</div></div>
+    <div class="kpi ${bn.realCT<=pitch?'ok':'ng'}"><div class="kl">공피치 정상</div><div class="kv">${bn.realCT<=pitch?'✅ 정상':'❌ 불량'}</div><div class="ks">병목 ${bn.realCT.toFixed(1)}초 ${bn.realCT<=pitch?'≤':'>'} 피치 ${pitchDisp}초</div></div>
   </div></div>`;
 
   const maxL=Math.max(...res.map(r=>r.load),100);
