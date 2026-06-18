@@ -826,6 +826,7 @@ function applyCTC(){
   const row=G().rows[_ctCalcIdx];
   row.ct=val;
   row.ctFormula=collectFormula();
+  autoSaveCT();
   closeCTCalc();
   render();
 }
