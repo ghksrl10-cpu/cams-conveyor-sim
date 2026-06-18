@@ -660,7 +660,8 @@ function loadCTData(){
 /* ─── 인원 저장/불러오기 (라인 고정) ────────── */
 function saveWorkers(){
   const key='conv_workers_'+curLine+'_'+curSub;
-  const data=G().rows.map(r=>({name:r.name,workers:r.workers,empty:r.empty}));
+  const totalW=+document.getElementById('totalWorkers').value||1;
+  const data={totalWorkers:totalW,rows:G().rows.map(r=>({name:r.name,workers:r.workers,empty:r.empty}))};
   localStorage.setItem(key,JSON.stringify(data));
   const el=document.getElementById('lineSaveNote');
   el.textContent='👷 인원·공백 저장됨 '+new Date().toLocaleTimeString('ko');
@@ -670,7 +671,11 @@ function loadWorkers(){
   const key='conv_workers_'+curLine+'_'+curSub;
   const raw=localStorage.getItem(key);
   if(!raw)return;
-  const data=JSON.parse(raw);
+  const saved=JSON.parse(raw);
+  // 구버전(배열) 호환
+  const data=Array.isArray(saved)?saved:saved.rows||[];
+  if(!Array.isArray(saved)&&saved.totalWorkers)
+    document.getElementById('totalWorkers').value=saved.totalWorkers;
   const rows=G().rows;
   data.forEach(d=>{
     const row=rows.find(r=>r.name===d.name);
