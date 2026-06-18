@@ -201,6 +201,7 @@
     <div class="nav-item active" onclick="showView('main')"><span class="ic">🏠</span> 메인</div>
     <div class="nav-item" onclick="showView('sim')"><span class="ic">⚙️</span> 공정 시뮬레이션</div>
     <div class="nav-item" onclick="showView('scen')"><span class="ic">🗂</span> 시나리오 비교</div>
+    <div class="nav-item" onclick="showView('ct')"><span class="ic">🧮</span> C/T 계산기</div>
     <div class="nav-group">라인 선택</div>
     <div class="nav-item" id="nl0" onclick="gotoSim(0)"><span class="ic">🏭</span> 조립 1라인</div>
     <div class="nav-item" id="nl1" onclick="gotoSim(1)"><span class="ic">🏭</span> 조립 2라인</div>
@@ -364,6 +365,53 @@
     </div>
   </section>
 
+  <!-- ─── C/T 계산기 ─── -->
+  <section id="view-ct">
+    <div class="page-h">
+      <button class="hamb btn" onclick="toggleNav(true)">☰</button>
+      <h1>🧮 C/T 계산기</h1>
+      <span class="grow"></span>
+      <button class="btn pri" onclick="applyCT()">📋 C/T 복사</button>
+      <button class="btn grn" onclick="saveCT()">💾 저장</button>
+      <button class="btn sml warn" onclick="resetCT()">초기화</button>
+    </div>
+
+    <!-- 차종명 입력 -->
+    <div class="bar" style="margin-bottom:16px">
+      <label>차종명</label>
+      <input type="text" id="ct-model" placeholder="예) EV6 FRT" style="width:180px;padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:14px;background:#0f1117;color:#f1f5f9">
+      <label style="margin-left:16px">저장 불러오기</label>
+      <select id="ct-load-sel" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:14px;background:#0f1117;color:#f1f5f9" onchange="loadCT(this.value)">
+        <option value="">-- 선택 --</option>
+      </select>
+      <button class="btn sml warn" onclick="deleteCTSave()">삭제</button>
+    </div>
+
+    <!-- 합계 표시 -->
+    <div style="background:#0d1f38;border:1px solid #1e3a5f;border-radius:14px;padding:18px 24px;margin-bottom:18px;display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:12px;color:var(--mut);margin-bottom:4px">합계 C/T</div>
+        <div id="ct-total" style="font-size:42px;font-weight:900;color:var(--blue);line-height:1">0<span style="font-size:18px;font-weight:600;margin-left:4px">초</span></div>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:12px;color:var(--mut);margin-bottom:6px">선택된 공정 수</div>
+        <div id="ct-count" style="font-size:20px;font-weight:800;color:#94a3b8">0개</div>
+      </div>
+    </div>
+
+    <!-- ① 개별공정 -->
+    <div class="sec" style="margin-bottom:14px">
+      <div class="sec-h">① 개별공정 <span class="stat" id="ct-sec1-sum">합계: 0초</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px" id="ct-sec1"></div>
+    </div>
+
+    <!-- ② LINE-UP -->
+    <div class="sec" style="margin-bottom:14px">
+      <div class="sec-h">② LINE-UP <span class="stat" id="ct-sec2-sum">합계: 0초</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px" id="ct-sec2"></div>
+    </div>
+  </section>
+
 </main>
 </div>
 
@@ -427,7 +475,7 @@ function showView(v){
   document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(el=>{
-    const map={'main':'메인','sim':'공정 시뮬레이션','scen':'시나리오 비교'};
+    const map={'main':'메인','sim':'공정 시뮬레이션','scen':'시나리오 비교','ct':'C/T 계산기'};
     el.classList.remove('active');
     if(el.textContent.trim()===map[v])el.classList.add('active');
   });
@@ -752,8 +800,213 @@ function clearScen(){if(!confirm('모두 삭제?'))return;scenarios=[];localStor
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+/* ─── C/T 계산기 ──────────────────────────────── */
+const CT_SEC1=[
+  {id:'s1_1', name:'포장 해체', vars:[], formula:()=>10},
+  {id:'s1_2a',name:'PAS류 펀칭 (4점이하)', vars:[], formula:()=>20},
+  {id:'s1_2b',name:'PAS류 홀더용착 (4점이하)', vars:[], formula:()=>52},
+  {id:'s1_2c',name:'PAS류 펀칭+홀더용착 (4점, 차중내6점 無)', vars:[], formula:()=>49},
+  {id:'s1_2d',name:'PAS류 펀칭+홀더용착 (4점, 차중내6점 有)', vars:[], formula:()=>49},
+  {id:'s1_2e',name:'PAS류 펀칭+홀더용착 (6점)', vars:[], formula:()=>84},
+  {id:'s1_3', name:'펀칭 (PAS류外)', vars:[], formula:()=>45},
+  {id:'s1_4', name:'가압 지그 이용 조립', vars:[], formula:()=>20},
+  {id:'s1_5', name:'B/BEAM SUB 조립', vars:[], formula:()=>30},
+  {id:'s1_6', name:'PIC 조립', vars:[], formula:()=>10},
+];
+const CT_SEC2=[
+  {id:'s2_1', name:'조립공정간 이동', vars:[], formula:()=>10},
+  {id:'s2_2', name:'RUNNER 제거', vars:[{key:'n',label:'RUNNER수',min:1}], formula:(v)=>2*v.n},
+  {id:'s2_3', name:'HOOK 조립', vars:[{key:'n',label:'HOOK수',min:1}], formula:(v)=>1.8*v.n},
+  {id:'s2_4', name:'TOWING CAP 조립', vars:[], formula:()=>5},
+  {id:'s2_5', name:'BLANK CVR 조립', vars:[], formula:()=>32},
+  {id:'s2_6', name:'R/GRILL, UPR GRILL 조립', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>5+v.hw*4.5},
+  {id:'s2_7', name:'AIR INTAKE', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>5+v.hw*4.5},
+  {id:'s2_8', name:'E/ABS', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>5+v.hw*4.5},
+  {id:'s2_9', name:'L/PLATE 조립', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>5+v.hw*4.5},
+  {id:'s2_10',name:'TAIL TRIM', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>5+v.hw*4.5},
+  {id:'s2_11',name:'UNDER CVR', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>5+v.hw*4.5},
+  {id:'s2_12',name:'FOG LAMP 조립 (L/R포함)', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>10+v.hw*4.5},
+  {id:'s2_13',name:'B/BEAM 조립', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>10+v.hw*4.5},
+  {id:'s2_14',name:'MUD GUARD', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>10+v.hw*4.5},
+  {id:'s2_15',name:'STEP 조립', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>20+v.hw*4.5},
+  {id:'s2_16',name:'BPR CVR (2피스)', vars:[{key:'hw',label:'HW수',min:0}], formula:(v)=>20+v.hw*4.5},
+  {id:'s2_17',name:'LIP BPR, REINF BPR', vars:[{key:'lip',label:'LIP수',min:0},{key:'hw',label:'HW수',min:0}], formula:(v)=>5*(v.lip+v.hw)},
+  {id:'s2_18',name:'MLDG 조립', vars:[{key:'mldg',label:'MLDG수',min:0},{key:'hw',label:'HW수',min:0}], formula:(v)=>5*(v.mldg+v.hw)},
+  {id:'s2_19a',name:'PAD 부착 (100mm이하)', vars:[{key:'n',label:'PAD수',min:1}], formula:(v)=>4+3*(v.n-1)},
+  {id:'s2_19b',name:'PAD 부착 (100mm초과)', vars:[{key:'len',label:'PAD길이(mm)',min:1}], formula:(v)=>4+0.01*v.len},
+  {id:'s2_20a',name:'BRKT/리플렉터 조립 (T/SCREW)', vars:[{key:'brkt',label:'BRKT수',min:0},{key:'hw',label:'HW수',min:0}], formula:(v)=>4.5*v.brkt+4.5*v.hw},
+  {id:'s2_20b',name:'BRKT/리플렉터 조립 (RIBET)', vars:[{key:'brkt',label:'BRKT수',min:0},{key:'hw',label:'HW수',min:0}], formula:(v)=>4.5*v.brkt+3*v.hw},
+  {id:'s2_21a',name:'H-LOGO (양면TAPE)', vars:[], formula:()=>15},
+  {id:'s2_21b',name:'H-LOGO (CLIP조립)', vars:[], formula:()=>20},
+  {id:'s2_22',name:'PAS류(BSW) 조립', vars:[{key:'n',label:'PAS개수',min:1}], formula:(v)=>5*v.n},
+  {id:'s2_23',name:'WIRING 조립', vars:[{key:'sensor',label:'센서수',min:0},{key:'clip',label:'CLIP수',min:0}], formula:(v)=>5+3*v.sensor+1.8*v.clip},
+  {id:'s2_24',name:'전장품 TEST', vars:[{key:'n',label:'항목수',min:1}], formula:(v)=>3+1.5*v.n},
+  {id:'s2_25',name:'이종방지 바코드라벨 부착', vars:[], formula:()=>3},
+  {id:'s2_26',name:'이종방지 검사', vars:[], formula:()=>15},
+  {id:'s2_27',name:'검사/적재', vars:[], formula:()=>45},
+];
+
+function ctRowVal(id){
+  const row=CT_SEC1.concat(CT_SEC2).find(r=>r.id===id);
+  if(!row)return 0;
+  const chk=document.getElementById('chk_'+id);
+  if(!chk||!chk.checked)return 0;
+  const vals={};
+  row.vars.forEach(v=>{
+    const el=document.getElementById('var_'+id+'_'+v.key);
+    vals[v.key]=el?parseFloat(el.value)||0:0;
+  });
+  return row.formula(vals);
+}
+
+function calcCT(){
+  let total=0,count=0;
+  let sum1=0,sum2=0;
+  CT_SEC1.forEach(r=>{const v=ctRowVal(r.id);if(v>0){total+=v;sum1+=v;count++;}
+    // 체크되었지만 0인 경우도 count
+    const chk=document.getElementById('chk_'+r.id);
+    if(chk&&chk.checked&&v===0){count++;}
+  });
+  CT_SEC2.forEach(r=>{const v=ctRowVal(r.id);if(v>0){total+=v;sum2+=v;count++;}
+    const chk=document.getElementById('chk_'+r.id);
+    if(chk&&chk.checked&&v===0){count++;}
+  });
+  document.getElementById('ct-total').innerHTML=Math.round(total*10)/10+'<span style="font-size:18px;font-weight:600;margin-left:4px">초</span>';
+  document.getElementById('ct-count').textContent=count+'개';
+  document.getElementById('ct-sec1-sum').textContent='합계: '+Math.round(sum1*10)/10+'초';
+  document.getElementById('ct-sec2-sum').textContent='합계: '+Math.round(sum2*10)/10+'초';
+  // 개별 행 C/T 표시 업데이트
+  CT_SEC1.concat(CT_SEC2).forEach(r=>{
+    const el=document.getElementById('ct_val_'+r.id);
+    if(!el)return;
+    const chk=document.getElementById('chk_'+r.id);
+    if(chk&&chk.checked){
+      const v=ctRowVal(r.id);
+      el.textContent=Math.round(v*10)/10+'초';
+      el.style.color='var(--blue)';
+    } else {
+      el.textContent='—';
+      el.style.color='var(--mut)';
+    }
+  });
+}
+
+function buildCTRow(r){
+  const hasVars=r.vars.length>0;
+  let varHtml='';
+  if(hasVars){
+    r.vars.forEach(v=>{
+      varHtml+=`<label style="font-size:12px;color:var(--mut);margin-left:10px">${v.label}</label>
+      <input type="number" id="var_${r.id}_${v.key}" value="${v.min||0}" min="${v.min||0}" step="1"
+        style="width:64px;padding:5px 6px;border:1px solid var(--bd);border-radius:7px;font-size:13px;background:#0f1117;color:#f1f5f9;text-align:center"
+        oninput="calcCT()">`;
+    });
+  }
+  return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;background:#13151c;border-radius:9px;border:1px solid var(--bd)">
+    <input type="checkbox" id="chk_${r.id}" style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0" onchange="calcCT()">
+    <span style="font-size:14px;font-weight:600;flex:1;min-width:180px">${r.name}</span>
+    ${varHtml}
+    <span id="ct_val_${r.id}" style="font-size:15px;font-weight:800;color:var(--mut);min-width:58px;text-align:right">—</span>
+  </div>`;
+}
+
+function renderCT(){
+  document.getElementById('ct-sec1').innerHTML=CT_SEC1.map(buildCTRow).join('');
+  document.getElementById('ct-sec2').innerHTML=CT_SEC2.map(buildCTRow).join('');
+  calcCT();
+  refreshCTLoadSel();
+}
+
+function applyCT(){
+  const total=CT_SEC1.concat(CT_SEC2).reduce((s,r)=>s+ctRowVal(r.id),0);
+  const val=Math.round(total*10)/10;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(String(val)).then(()=>alert('C/T '+val+'초 — 클립보드에 복사되었습니다.'));
+  } else {
+    alert('합계 C/T: '+val+'초');
+  }
+}
+
+function resetCT(){
+  if(!confirm('선택 및 입력값을 모두 초기화할까요?'))return;
+  CT_SEC1.concat(CT_SEC2).forEach(r=>{
+    const chk=document.getElementById('chk_'+r.id);
+    if(chk)chk.checked=false;
+    r.vars.forEach(v=>{
+      const el=document.getElementById('var_'+r.id+'_'+v.key);
+      if(el)el.value=v.min||0;
+    });
+  });
+  document.getElementById('ct-model').value='';
+  calcCT();
+}
+
+function saveCT(){
+  const model=document.getElementById('ct-model').value.trim()||'(미입력)';
+  const state={model, items:{}};
+  CT_SEC1.concat(CT_SEC2).forEach(r=>{
+    const chk=document.getElementById('chk_'+r.id);
+    const checked=chk&&chk.checked;
+    const vars={};
+    r.vars.forEach(v=>{
+      const el=document.getElementById('var_'+r.id+'_'+v.key);
+      vars[v.key]=el?el.value:'0';
+    });
+    state.items[r.id]={checked,vars};
+  });
+  state.total=Math.round(CT_SEC1.concat(CT_SEC2).reduce((s,r)=>s+ctRowVal(r.id),0)*10)/10;
+  const saves=JSON.parse(localStorage.getItem('conv_ct_saves')||'[]');
+  state.savedAt=Date.now();
+  saves.unshift(state);
+  localStorage.setItem('conv_ct_saves',JSON.stringify(saves.slice(0,20)));
+  refreshCTLoadSel();
+  alert('저장 완료: '+model+' (C/T '+state.total+'초)');
+}
+
+function refreshCTLoadSel(){
+  const saves=JSON.parse(localStorage.getItem('conv_ct_saves')||'[]');
+  const sel=document.getElementById('ct-load-sel');
+  sel.innerHTML='<option value="">-- 선택 --</option>';
+  saves.forEach((s,i)=>{
+    const d=new Date(s.savedAt);
+    const label=s.model+' ('+s.total+'초) '+d.toLocaleDateString('ko-KR');
+    sel.innerHTML+=`<option value="${i}">${esc(label)}</option>`;
+  });
+}
+
+function loadCT(idx){
+  if(idx==='')return;
+  const saves=JSON.parse(localStorage.getItem('conv_ct_saves')||'[]');
+  const state=saves[parseInt(idx)];
+  if(!state)return;
+  document.getElementById('ct-model').value=state.model==='(미입력)'?'':state.model;
+  CT_SEC1.concat(CT_SEC2).forEach(r=>{
+    const item=state.items[r.id];
+    if(!item)return;
+    const chk=document.getElementById('chk_'+r.id);
+    if(chk)chk.checked=item.checked;
+    r.vars.forEach(v=>{
+      const el=document.getElementById('var_'+r.id+'_'+v.key);
+      if(el&&item.vars)el.value=item.vars[v.key]||v.min||0;
+    });
+  });
+  calcCT();
+}
+
+function deleteCTSave(){
+  const sel=document.getElementById('ct-load-sel');
+  const idx=parseInt(sel.value);
+  if(isNaN(idx))return;
+  const saves=JSON.parse(localStorage.getItem('conv_ct_saves')||'[]');
+  if(!confirm(saves[idx].model+' 저장 항목을 삭제할까요?'))return;
+  saves.splice(idx,1);
+  localStorage.setItem('conv_ct_saves',JSON.stringify(saves));
+  sel.value='';
+  refreshCTLoadSel();
+}
+
 /* ─── 초기화 ──────────────────────────────────── */
-buildStabs();render();renderMain();renderScen();calcPitch();
+buildStabs();render();renderMain();renderScen();calcPitch();renderCT();
 </script>
 </body>
 </html>
