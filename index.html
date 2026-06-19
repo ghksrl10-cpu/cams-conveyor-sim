@@ -639,7 +639,7 @@ function render(){
         <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">S육각</span><input type="number" value="${r.fShex||0}" min="0" onchange="updNum(${i},'fShex',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
         <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">B육각</span><input type="number" value="${r.fBhex||0}" min="0" onchange="updNum(${i},'fBhex',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
       </div></td>`:`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>`)}
-      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea rows="2" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'note',this.value)" placeholder="관리항목">${esc(r.note)}</textarea></td>`}
+      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea rows="2" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'note',this.value);autoSaveCT()" placeholder="관리항목">${esc(r.note)}</textarea></td>`}
       <td style="text-align:center;white-space:nowrap">
         <button class="btn sml" onclick="openDist(${i})" style="margin-bottom:3px">🔀 배분</button><br>
         <button class="btn sml warn" onclick="delRow(${i})">삭제</button>
@@ -679,12 +679,12 @@ function autoSaveBar(){
 }
 function autoSaveCT(){
   const key='conv_ct_'+curLine+'_'+curSub;
-  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null,fNut:r.fNut||0,fScrew:r.fScrew||0,fShex:r.fShex||0,fBhex:r.fBhex||0}));
+  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null,note:r.note||'',task:r.task||'',fNut:r.fNut||0,fScrew:r.fScrew||0,fShex:r.fShex||0,fBhex:r.fBhex||0}));
   localStorage.setItem(key,JSON.stringify(data));
 }
 function saveCTData(){
   const key='conv_ct_'+curLine+'_'+curSub;
-  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null,fNut:r.fNut||0,fScrew:r.fScrew||0,fShex:r.fShex||0,fBhex:r.fBhex||0}));
+  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null,note:r.note||'',task:r.task||'',fNut:r.fNut||0,fScrew:r.fScrew||0,fShex:r.fShex||0,fBhex:r.fBhex||0}));
   localStorage.setItem(key,JSON.stringify(data));
   const sub=LINE_DEF[curLine].subs[curSub];
   const el=document.getElementById('lineSaveNote');
@@ -699,7 +699,7 @@ function loadCTData(){
   const rows=G().rows;
   data.forEach(d=>{
     const row=rows.find(r=>r.name===d.name);
-    if(row){row.ct=d.ct||0;if(d.ctFormula)row.ctFormula=d.ctFormula;if(d.fNut!=null)row.fNut=+d.fNut;if(d.fScrew!=null)row.fScrew=+d.fScrew;if(d.fShex!=null)row.fShex=+d.fShex;if(d.fBhex!=null)row.fBhex=+d.fBhex;}
+    if(row){row.ct=d.ct||0;if(d.ctFormula)row.ctFormula=d.ctFormula;if(d.note!=null)row.note=d.note;if(d.task!=null)row.task=d.task;if(d.fNut!=null)row.fNut=+d.fNut;if(d.fScrew!=null)row.fScrew=+d.fScrew;if(d.fShex!=null)row.fShex=+d.fShex;if(d.fBhex!=null)row.fBhex=+d.fBhex;}
   });
 }
 /* ─── 인원 저장/불러오기 (라인 고정) ────────── */
