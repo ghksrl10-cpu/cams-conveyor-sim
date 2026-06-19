@@ -651,8 +651,7 @@ function upd(i,k,v){G().rows[i][k]=v;}
 function updNum(i,k,v){
   G().rows[i][k]=v!=null?v:0;
   render();
-  if(k==='ct') autoSaveCT();
-  if(k==='fNut'||k==='fScrew'||k==='fShex'||k==='fBhex') autoSaveWorkers();
+  if(k==='ct'||k==='fNut'||k==='fScrew'||k==='fShex'||k==='fBhex') autoSaveCT();
 }
 function autoSaveWorkers(){
   const key='conv_workers_'+curLine+'_'+curSub;
@@ -680,12 +679,12 @@ function autoSaveBar(){
 }
 function autoSaveCT(){
   const key='conv_ct_'+curLine+'_'+curSub;
-  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null}));
+  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null,fNut:r.fNut||0,fScrew:r.fScrew||0,fShex:r.fShex||0,fBhex:r.fBhex||0}));
   localStorage.setItem(key,JSON.stringify(data));
 }
 function saveCTData(){
   const key='conv_ct_'+curLine+'_'+curSub;
-  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null}));
+  const data=G().rows.map(r=>({name:r.name,ct:r.ct,ctFormula:r.ctFormula||null,fNut:r.fNut||0,fScrew:r.fScrew||0,fShex:r.fShex||0,fBhex:r.fBhex||0}));
   localStorage.setItem(key,JSON.stringify(data));
   const sub=LINE_DEF[curLine].subs[curSub];
   const el=document.getElementById('lineSaveNote');
@@ -700,7 +699,7 @@ function loadCTData(){
   const rows=G().rows;
   data.forEach(d=>{
     const row=rows.find(r=>r.name===d.name);
-    if(row){row.ct=d.ct||0;if(d.ctFormula)row.ctFormula=d.ctFormula;}
+    if(row){row.ct=d.ct||0;if(d.ctFormula)row.ctFormula=d.ctFormula;if(d.fNut!=null)row.fNut=+d.fNut;if(d.fScrew!=null)row.fScrew=+d.fScrew;if(d.fShex!=null)row.fShex=+d.fShex;if(d.fBhex!=null)row.fBhex=+d.fBhex;}
   });
 }
 /* ─── 인원 저장/불러오기 (라인 고정) ────────── */
