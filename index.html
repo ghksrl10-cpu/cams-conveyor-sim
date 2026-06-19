@@ -1623,22 +1623,26 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
 
     <!-- 체결수량 -->
     <div style="font-size:12px;color:var(--mut);margin-bottom:8px">체결수량 <span style="color:var(--mut);font-size:11px">×4.5초/개</span></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <span style="font-size:12px;color:var(--mut)">너트</span>
-        <input class="dadd" type="number" id="ctcNut" min="0" value="0" oninput="calcCTC3()">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px;width:60px">너트</span>
+        <input class="dadd" type="number" id="ctcNut" min="0" value="0" oninput="calcCTC3()" style="width:100px;text-align:right">
+        <span style="font-size:13px;color:var(--mut)">EA</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <span style="font-size:12px;color:var(--mut)">스크류</span>
-        <input class="dadd" type="number" id="ctcScrew" min="0" value="0" oninput="calcCTC3()">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px;width:60px">스크류</span>
+        <input class="dadd" type="number" id="ctcScrew" min="0" value="0" oninput="calcCTC3()" style="width:100px;text-align:right">
+        <span style="font-size:13px;color:var(--mut)">EA</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <span style="font-size:12px;color:var(--mut)">S육각</span>
-        <input class="dadd" type="number" id="ctcShex" min="0" value="0" oninput="calcCTC3()">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px;width:60px">S육각</span>
+        <input class="dadd" type="number" id="ctcShex" min="0" value="0" oninput="calcCTC3()" style="width:100px;text-align:right">
+        <span style="font-size:13px;color:var(--mut)">EA</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <span style="font-size:12px;color:var(--mut)">B육각</span>
-        <input class="dadd" type="number" id="ctcBhex" min="0" value="0" oninput="calcCTC3()">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px;width:60px">B육각</span>
+        <input class="dadd" type="number" id="ctcBhex" min="0" value="0" oninput="calcCTC3()" style="width:100px;text-align:right">
+        <span style="font-size:13px;color:var(--mut)">EA</span>
       </div>
     </div>
 
