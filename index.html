@@ -1044,10 +1044,11 @@ function runSim(){
   const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
   const active=s.rows.filter(r=>!r.empty&&r.ct>0);
   if(!active.length){alert('C/T가 입력된 유효 공정이 없습니다.');return;}
-  const res=active.map(r=>{const sp=(r.taskSpan||1);const ep=pitch*sp;const rt=(sp>1)?r.ct:r.ct/(r.workers||1);return{...r,realCT:rt,effPitch:ep,load:rt/ep*100,isBN:rt>ep};});
-  const bn=res.reduce((a,b)=>a.realCT>b.realCT?a:b);
+  const res=active.map(r=>{const sp=(r.taskSpan||1);const ep=pitch*sp;const rt=(sp>1)?r.ct:r.ct/(r.workers||1);const rpp=rt/sp;return{...r,realCT:rt,effPitch:ep,rpp,load:rt/ep*100,isBN:rt>ep};});
+  const bn=res.reduce((a,b)=>a.rpp>b.rpp?a:b); // 병목: 컨베어 위치당 점유시간 기준
+  const bnRate=Math.max(bn.rpp,pitch); // 컨베이어 피치 이상이어야 의미있음
   const lbEff=res.reduce((a,r)=>a+r.realCT,0)/(bn.realCT*res.length)*100;
-  const actU=Math.round(3600/bn.realCT),daily=Math.floor(wm*60/bn.realCT);
+  const actU=Math.round(3600/bnRate),daily=Math.floor(wm*60/bnRate);
   const pOk=daily>=tU,lbC=lbEff>=85?'ok':lbEff>=70?'warn':'ng';
   const pitchDisp=pitch.toFixed(1);
   const totalWorkers=+document.getElementById('totalWorkers').value||1;
