@@ -478,7 +478,15 @@ function makeRows(li,si){
   if(li<2) // 조립 1·2라인
     return DEF_LINE12.map((d,i)=>({conv:i+1,...d,empty:false,ct:0,workers:1,parallel:1}));
   if(li===2&&si===0) // 조립 3라인 C/PAD
-    return DEF_CPAD.map((d,i)=>({conv:i+1,...d,empty:false,ct:0,workers:1,parallel:1,group:''}));
+    return DEF_CPAD.map((d,i)=>{
+      const parseF=(pat)=>{const m=(d.fastener||'').match(pat);return m?parseInt(m[1]):0;};
+      return {conv:i+1,...d,empty:false,ct:0,workers:1,parallel:1,group:'',
+        fNut:parseF(/너트\s*(\d+)\s*EA/i),
+        fScrew:parseF(/스크류\s*(\d+)\s*EA/i),
+        fShex:parseF(/S육각\s*(\d+)\s*EA/i)||parseF(/(?<![B-Z])육각\s*(\d+)\s*EA/i),
+        fBhex:parseF(/B육각\s*(\d+)\s*EA/i)||parseF(/융각\s*(\d+)\s*EA/i)
+      };
+    });
   return[];
 }
 const state=LINE_DEF.map((l,li)=>l.subs.map((_,si)=>({rows:makeRows(li,si)})));
@@ -625,7 +633,12 @@ function render(){
       ${r.workerSpan===0?'':`<td class="${offC}" ${(r.workerSpan||1)>1?`rowspan="${r.workerSpan}" style="vertical-align:middle;text-align:center"`:''}><input type="number" value="${r.workers}" min="0" onchange="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>`}
       ${r.taskSpan===0?'':`<td class="val ${r.empty?'off':ctCls}" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${r.empty?'var(--mut)':''}"`:''}>${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>`}
       ${r.taskSpan===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
-      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>`}
+      ${r.taskSpan===0?'':(curLine===2?`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle;padding:6px 8px"`:'style="padding:6px 8px"'}><div style="display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">너트</span><input type="number" value="${r.fNut||0}" min="0" onchange="updNum(${i},'fNut',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">스크류</span><input type="number" value="${r.fScrew||0}" min="0" onchange="updNum(${i},'fScrew',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">S육각</span><input type="number" value="${r.fShex||0}" min="0" onchange="updNum(${i},'fShex',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">B육각</span><input type="number" value="${r.fBhex||0}" min="0" onchange="updNum(${i},'fBhex',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
+      </div></td>`:`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>`)}
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea rows="2" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'note',this.value)" placeholder="관리항목">${esc(r.note)}</textarea></td>`}
       <td style="text-align:center;white-space:nowrap">
         <button class="btn sml" onclick="openDist(${i})" style="margin-bottom:3px">🔀 배분</button><br>
@@ -639,6 +652,15 @@ function updNum(i,k,v){
   G().rows[i][k]=v!=null?v:0;
   render();
   if(k==='ct') autoSaveCT();
+  if(k==='fNut'||k==='fScrew'||k==='fShex'||k==='fBhex') autoSaveWorkers();
+}
+function autoSaveWorkers(){
+  const key='conv_workers_'+curLine+'_'+curSub;
+  const raw=localStorage.getItem(key);
+  const saved=raw?JSON.parse(raw):{};
+  if(!saved.bar)saved.bar={};
+  saved.rows=G().rows.map(r=>({name:r.name,workers:r.workers,empty:r.empty,fNut:r.fNut||0,fScrew:r.fScrew||0,fShex:r.fShex||0,fBhex:r.fBhex||0}));
+  localStorage.setItem(key,JSON.stringify(saved));
 }
 
 /* ─── C/T 저장/불러오기 ─────────────────────── */
@@ -691,7 +713,7 @@ function saveWorkers(){
     targetUPH:document.getElementById('targetUPH').value,
     totalWorkers:document.getElementById('totalWorkers').value
   };
-  const data={bar,rows:G().rows.map(r=>({name:r.name,workers:r.workers,empty:r.empty}))};
+  const data={bar,rows:G().rows.map(r=>({name:r.name,workers:r.workers,empty:r.empty,fNut:r.fNut||0,fScrew:r.fScrew||0,fShex:r.fShex||0,fBhex:r.fBhex||0}))};
   localStorage.setItem(key,JSON.stringify(data));
   const el=document.getElementById('lineSaveNote');
   const sub=LINE_DEF[curLine].subs[curSub];
@@ -718,7 +740,7 @@ function loadWorkers(){
   const rows=G().rows;
   data.forEach(d=>{
     const row=rows.find(r=>r.name===d.name);
-    if(row){row.workers=d.workers!=null?+d.workers:1;if(d.empty!==undefined)row.empty=d.empty;}
+    if(row){row.workers=d.workers!=null?+d.workers:1;if(d.empty!==undefined)row.empty=d.empty;if(d.fNut!=null)row.fNut=+d.fNut;if(d.fScrew!=null)row.fScrew=+d.fScrew;if(d.fShex!=null)row.fShex=+d.fShex;if(d.fBhex!=null)row.fBhex=+d.fBhex;}
   });
 }
 function loadLineData(){
@@ -855,26 +877,12 @@ function openCTCalc3(i){
   document.getElementById('ctcBase3').value=f.ctcBase3||'0';
   document.getElementById('ctcBrktType3').value=f.ctcBrktType3||'screw';
   document.getElementById('ctcPadType3').value=f.ctcPadType3||'cnt';
-  // 체결수량 자동 파싱
-  if(r.fastener&&!r.ctFormula){
-    const fa=r.fastener;
-    const parseQty=(pat)=>{const m=fa.match(pat);return m?parseInt(m[1]):0;};
-    const nut=parseQty(/너트\s*(\d+)\s*EA/i);
-    const screw=parseQty(/스크류\s*(\d+)\s*EA/i);
-    const shex=parseQty(/S육각\s*(\d+)\s*EA/i)||parseQty(/S\s*육각\s*(\d+)\s*EA/i);
-    const bhex=parseQty(/B육각\s*(\d+)\s*EA/i)||parseQty(/B\s*육각\s*(\d+)\s*EA/i);
-    const unqualHex=(()=>{const m=fa.match(/(?<![SsBb])육각\s*(\d+)\s*EA/i);return m?parseInt(m[1]):0;})();
-    if(nut)document.getElementById('ctcNut').value=nut;
-    if(screw)document.getElementById('ctcScrew').value=screw;
-    if(shex)document.getElementById('ctcShex').value=shex;
-    if(bhex)document.getElementById('ctcBhex').value=bhex;
-    if(unqualHex&&!shex)document.getElementById('ctcShex').value=unqualHex;
-    const fn=document.getElementById('ctcFastenerNote3');
-    fn.textContent='📎 체결수량 자동인식: '+fa;fn.style.display='block';
-  }else{
-    const fn=document.getElementById('ctcFastenerNote3');
-    fn.textContent='';fn.style.display='none';
-  }
+  // 체결수량 → 행에 저장된 값 복원
+  document.getElementById('ctcNut').value=r.fNut||0;
+  document.getElementById('ctcScrew').value=r.fScrew||0;
+  document.getElementById('ctcShex').value=r.fShex||0;
+  document.getElementById('ctcBhex').value=r.fBhex||0;
+  document.getElementById('ctcFastenerNote3').style.display='none';
   calcCTC3();
   document.getElementById('ctcModal3').classList.add('show');
 }
@@ -940,7 +948,10 @@ function applyCTC3(){
   const row=G().rows[_ctCalcIdx];
   row.ct=val;
   row.ctFormula=collectFormula3();
+  const v=id=>+(document.getElementById(id)?.value||0);
+  row.fNut=v('ctcNut');row.fScrew=v('ctcScrew');row.fShex=v('ctcShex');row.fBhex=v('ctcBhex');
   autoSaveCT();
+  autoSaveWorkers();
   closeCTCalc3();
   render();
 }
