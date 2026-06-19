@@ -735,10 +735,11 @@ function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[cu
 /* ─── 기아 인정표 C/T 계산기 ─────────────────── */
 let _ctCalcIdx=-1;
 function openCTCalc(i){
+  if(curLine===2){openCTCalc3(i);return;}
   _ctCalcIdx=i;
   const r=G().rows[i];
   document.getElementById('ctcProcName').textContent=r.name||('공정 '+(i+1));
-  const f=r.ctFormula||{};
+  const f=(r.ctFormula&&r.ctFormula._type!=='line3')?r.ctFormula:{};
   // 저장된 값 또는 초기값 복원
   const numIds=['ctcRunner','ctcHook','ctcHW','ctcBase','ctcPasAmt',
    'ctcUnpack','ctcWireSensor','ctcWireClip','ctcTestItem','ctcBarcode','ctcTorque','ctcPadCnt','ctcPadLen',
@@ -839,6 +840,111 @@ function applyCTC(){
   render();
 }
 function closeCTCalc(){document.getElementById('ctcModal').classList.remove('show');}
+
+/* ─── 3라인 C/T 계산기 ────────────────────────── */
+function openCTCalc3(i){
+  _ctCalcIdx=i;
+  const r=G().rows[i];
+  document.getElementById('ctcProcName3').textContent=r.name||('공정 '+(i+1));
+  const f=(r.ctFormula&&r.ctFormula._type==='line3')?r.ctFormula:{};
+  const ids=['ctcMove3','ctcUnpack3','ctcDanpum','ctcHarness','ctcHook3','ctcBarcode3',
+    'ctcDong','ctcAirbag','ctcNut','ctcScrew','ctcShex','ctcBhex',
+    'ctcWireSensor3','ctcWireClip3','ctcTestItem3','ctcTorque3',
+    'ctcPadCnt3','ctcPadLen3','ctcBrktCnt3','ctcBrktHW3','ctcMldgCnt3','ctcMldgHW3'];
+  ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value=f[id]!=null?f[id]:0;});
+  document.getElementById('ctcBase3').value=f.ctcBase3||'0';
+  document.getElementById('ctcBrktType3').value=f.ctcBrktType3||'screw';
+  document.getElementById('ctcPadType3').value=f.ctcPadType3||'cnt';
+  // 체결수량 자동 파싱
+  if(r.fastener&&!r.ctFormula){
+    const fa=r.fastener;
+    const parseQty=(pat)=>{const m=fa.match(pat);return m?parseInt(m[1]):0;};
+    const nut=parseQty(/너트\s*(\d+)\s*EA/i);
+    const screw=parseQty(/스크류\s*(\d+)\s*EA/i);
+    const shex=parseQty(/S육각\s*(\d+)\s*EA/i)||parseQty(/S\s*육각\s*(\d+)\s*EA/i);
+    const bhex=parseQty(/B육각\s*(\d+)\s*EA/i)||parseQty(/B\s*육각\s*(\d+)\s*EA/i);
+    const unqualHex=(()=>{const m=fa.match(/(?<![SsBb])육각\s*(\d+)\s*EA/i);return m?parseInt(m[1]):0;})();
+    if(nut)document.getElementById('ctcNut').value=nut;
+    if(screw)document.getElementById('ctcScrew').value=screw;
+    if(shex)document.getElementById('ctcShex').value=shex;
+    if(bhex)document.getElementById('ctcBhex').value=bhex;
+    if(unqualHex&&!shex)document.getElementById('ctcShex').value=unqualHex;
+    const fn=document.getElementById('ctcFastenerNote3');
+    fn.textContent='📎 체결수량 자동인식: '+fa;fn.style.display='block';
+  }else{
+    const fn=document.getElementById('ctcFastenerNote3');
+    fn.textContent='';fn.style.display='none';
+  }
+  calcCTC3();
+  document.getElementById('ctcModal3').classList.add('show');
+}
+function calcCTC3(){
+  let t=0;
+  const v=id=>+(document.getElementById(id)?.value||0);
+  t+=v('ctcMove3')*10;
+  t+=v('ctcUnpack3')*10;
+  t+=+document.getElementById('ctcBase3').value;
+  t+=v('ctcDanpum')*6;
+  t+=v('ctcHarness')*6;
+  t+=v('ctcHook3')*1.8;
+  t+=v('ctcBarcode3')*3;
+  t+=v('ctcDong')*5;
+  t+=v('ctcAirbag')*10;
+  // 체결수량
+  t+=(v('ctcNut')+v('ctcScrew')+v('ctcShex')+v('ctcBhex'))*4.5;
+  // WIRING
+  const ws=v('ctcWireSensor3'),wc=v('ctcWireClip3');
+  if(ws||wc) t+=5+ws*3+wc*1.8;
+  // 전장품 TEST
+  const ti=v('ctcTestItem3'); if(ti) t+=3+1.5*ti;
+  // 토크/임팩
+  t+=v('ctcTorque3')*8;
+  // PAD
+  const padType=document.getElementById('ctcPadType3')?.value;
+  const pc=v('ctcPadCnt3'),pl=v('ctcPadLen3');
+  if(padType==='cnt'&&pc) t+=4+3*(pc-1);
+  if(padType==='len'&&pl) t+=4+0.01*pl;
+  // BRKT
+  const bc=v('ctcBrktCnt3'),bh=v('ctcBrktHW3');
+  const btype=document.getElementById('ctcBrktType3')?.value;
+  if(bc||bh) t+=(btype==='screw'?4.5*bc+4.5*bh:4.5*bc+3*bh);
+  // MLDG
+  const mc=v('ctcMldgCnt3'),mh=v('ctcMldgHW3');
+  if(mc||mh) t+=5*(mc+mh);
+  t=Math.round(t*10)/10;
+  document.getElementById('ctcResult3').textContent=t.toFixed(1)+'초';
+  document.getElementById('ctcResultVal3').value=t;
+}
+function collectFormula3(){
+  const ids=['ctcMove3','ctcUnpack3','ctcDanpum','ctcHarness','ctcHook3','ctcBarcode3',
+    'ctcDong','ctcAirbag','ctcNut','ctcScrew','ctcShex','ctcBhex',
+    'ctcWireSensor3','ctcWireClip3','ctcTestItem3','ctcTorque3',
+    'ctcPadCnt3','ctcPadLen3','ctcBrktCnt3','ctcBrktHW3','ctcMldgCnt3','ctcMldgHW3'];
+  const f={_type:'line3'};
+  ids.forEach(id=>{f[id]=+document.getElementById(id)?.value||0;});
+  f.ctcBase3=document.getElementById('ctcBase3').value;
+  f.ctcBrktType3=document.getElementById('ctcBrktType3').value;
+  f.ctcPadType3=document.getElementById('ctcPadType3').value;
+  return f;
+}
+function saveFormula3(){
+  if(_ctCalcIdx<0)return;
+  G().rows[_ctCalcIdx].ctFormula=collectFormula3();
+  autoSaveCT();
+  const el=document.getElementById('ctcSaveNote3');
+  if(el){el.textContent='✅ 수식 저장됨';setTimeout(()=>el.textContent='',2000);}
+}
+function applyCTC3(){
+  const val=+document.getElementById('ctcResultVal3').value||0;
+  if(!val)return;
+  const row=G().rows[_ctCalcIdx];
+  row.ct=val;
+  row.ctFormula=collectFormula3();
+  autoSaveCT();
+  closeCTCalc3();
+  render();
+}
+function closeCTCalc3(){document.getElementById('ctcModal3').classList.remove('show');}
 
 /* ─── 공수 배분 ───────────────────────────────── */
 let _distIdx=-1;
@@ -1423,6 +1529,160 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
       <span id="ctcSaveNote" style="font-size:12px;color:var(--ok)"></span>
       <button class="btn sml pri" onclick="applyCTC()">✅ C/T 적용</button>
       <button class="btn sml warn" onclick="closeCTCalc()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3라인 C/T 계산기 모달 ===== -->
+<div class="modal-bg" id="ctcModal3" onclick="if(event.target===this)closeCTCalc3()">
+  <div class="modal" style="width:600px">
+    <h2>🧮 C/T 계산기 (조립 3라인)</h2>
+    <div class="msub">공정: <b id="ctcProcName3"></b></div>
+    <div id="ctcFastenerNote3" style="font-size:12px;color:var(--ok);background:#052e16;border:1px solid #166534;border-radius:8px;padding:6px 10px;margin-bottom:10px;display:none"></div>
+
+    <!-- 공통 기본 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px">
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">조립공정간 이동 <span style="color:var(--mut);font-size:12px">×10초</span></div>
+        <input class="dadd" type="number" id="ctcMove3" min="0" value="0" oninput="calcCTC3()">
+      </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">포장 해체 <span style="color:var(--mut);font-size:12px">×10초</span></div>
+        <input class="dadd" type="number" id="ctcUnpack3" min="0" value="0" oninput="calcCTC3()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:14px">
+        <span>기본값</span>
+        <select id="ctcBase3" onchange="calcCTC3()" style="background:#0f1117;border:1px solid var(--bd);border-radius:6px;color:var(--ink);padding:4px 8px;font-size:13px">
+          <option value="0">없음</option>
+          <option value="5">5초 (조립류)</option>
+          <option value="10">10초 (B/BEAM 류)</option>
+          <option value="20">20초 (STEP 류)</option>
+          <option value="3">3초 (바코드)</option>
+          <option value="15">15초 (이중방지검사)</option>
+          <option value="45">45초 (검사/적재)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--bd);margin:12px 0"></div>
+
+    <!-- 수량 항목 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">단품 갯수 <span style="color:var(--mut);font-size:12px">×6초</span></div>
+        <input class="dadd" type="number" id="ctcDanpum" min="0" value="0" oninput="calcCTC3()">
+      </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">하네스 <span style="color:var(--mut);font-size:12px">×6초</span></div>
+        <input class="dadd" type="number" id="ctcHarness" min="0" value="0" oninput="calcCTC3()">
+      </div>
+
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">HOOK수 <span style="color:var(--mut);font-size:12px">×1.8초</span></div>
+        <input class="dadd" type="number" id="ctcHook3" min="0" value="0" oninput="calcCTC3()">
+      </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">바코드 스캔 <span style="color:var(--mut);font-size:12px">×3초</span></div>
+        <input class="dadd" type="number" id="ctcBarcode3" min="0" value="0" oninput="calcCTC3()">
+      </div>
+
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">동선 <span style="color:var(--mut);font-size:12px">×5초</span></div>
+        <input class="dadd" type="number" id="ctcDong" min="0" value="0" oninput="calcCTC3()">
+      </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">에어백/C-PAD 작업 <span style="color:var(--mut);font-size:12px">×10초</span></div>
+        <input class="dadd" type="number" id="ctcAirbag" min="0" value="0" oninput="calcCTC3()">
+      </div>
+
+      <!-- WIRING -->
+      <div class="dist-row" style="border:none;padding:4px 0;flex-wrap:wrap;gap:6px">
+        <div class="dname">WIRING<br><span style="color:var(--mut);font-size:11px">5+센서×3+CLIP×1.8</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+          <span style="font-size:11px;color:var(--mut)">센서수</span>
+          <input class="dadd" type="number" id="ctcWireSensor3" min="0" value="0" oninput="calcCTC3()">
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+          <span style="font-size:11px;color:var(--mut)">CLIP수</span>
+          <input class="dadd" type="number" id="ctcWireClip3" min="0" value="0" oninput="calcCTC3()">
+        </div>
+      </div>
+
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">전장품 TEST<br><span style="color:var(--mut);font-size:11px">3+항목×1.5초</span></div>
+        <input class="dadd" type="number" id="ctcTestItem3" min="0" value="0" oninput="calcCTC3()" placeholder="항목수">
+      </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">토크/임팩 검증 <span style="color:var(--mut);font-size:12px">×8초</span></div>
+        <input class="dadd" type="number" id="ctcTorque3" min="0" value="0" oninput="calcCTC3()">
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--bd);margin:12px 0"></div>
+
+    <!-- 체결수량 -->
+    <div style="font-size:12px;color:var(--mut);margin-bottom:8px">체결수량 <span style="color:var(--mut);font-size:11px">×4.5초/개</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;color:var(--mut)">너트</span>
+        <input class="dadd" type="number" id="ctcNut" min="0" value="0" oninput="calcCTC3()">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;color:var(--mut)">스크류</span>
+        <input class="dadd" type="number" id="ctcScrew" min="0" value="0" oninput="calcCTC3()">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;color:var(--mut)">S육각</span>
+        <input class="dadd" type="number" id="ctcShex" min="0" value="0" oninput="calcCTC3()">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;color:var(--mut)">B육각</span>
+        <input class="dadd" type="number" id="ctcBhex" min="0" value="0" oninput="calcCTC3()">
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--bd);margin:12px 0"></div>
+
+    <!-- PAD / BRKT / MLDG -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div>
+        <div style="font-size:12px;color:var(--mut);margin-bottom:6px">PAD 부착</div>
+        <select id="ctcPadType3" onchange="calcCTC3()" style="background:#0f1117;border:1px solid var(--bd);border-radius:6px;color:var(--ink);padding:4px 8px;font-size:12px;width:100%;margin-bottom:6px">
+          <option value="cnt">개수 기준 (4+3×(PAD수-1))</option>
+          <option value="len">길이 기준 (4+0.01×길이mm)</option>
+        </select>
+        <input class="dadd" type="number" id="ctcPadCnt3" min="0" value="0" oninput="calcCTC3()" placeholder="PAD 개수" style="width:48%">
+        <input class="dadd" type="number" id="ctcPadLen3" min="0" value="0" oninput="calcCTC3()" placeholder="길이(mm)" style="width:48%">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--mut);margin-bottom:6px">BRKT/리플렉터 조립</div>
+        <select id="ctcBrktType3" onchange="calcCTC3()" style="background:#0f1117;border:1px solid var(--bd);border-radius:6px;color:var(--ink);padding:4px 8px;font-size:12px;width:100%;margin-bottom:6px">
+          <option value="screw">T/SCREW (4.5×BRKT+4.5×HW)</option>
+          <option value="ribet">RIBET (4.5×BRKT+3×HW)</option>
+        </select>
+        <input class="dadd" type="number" id="ctcBrktCnt3" min="0" value="0" oninput="calcCTC3()" placeholder="BRKT수" style="width:48%">
+        <input class="dadd" type="number" id="ctcBrktHW3" min="0" value="0" oninput="calcCTC3()" placeholder="HW수" style="width:48%">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--mut);margin-bottom:6px">MLDG수+HW수 <span style="color:var(--mut);font-size:11px">×5초</span></div>
+        <input class="dadd" type="number" id="ctcMldgCnt3" min="0" value="0" oninput="calcCTC3()" placeholder="MLDG" style="width:48%">
+        <input class="dadd" type="number" id="ctcMldgHW3" min="0" value="0" oninput="calcCTC3()" placeholder="HW" style="width:48%">
+      </div>
+    </div>
+
+    <!-- 결과 -->
+    <div class="dist-total" style="margin-top:18px">
+      <span style="font-size:15px;font-weight:700">계산 결과</span>
+      <b id="ctcResult3" style="font-size:24px;color:var(--ok)">0.0초</b>
+    </div>
+    <input type="hidden" id="ctcResultVal3" value="0">
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn sml" onclick="saveFormula3()" style="background:#1e3a5f;border-color:#1e3a5f;color:#93c5fd">💾 수식 저장</button>
+      <span id="ctcSaveNote3" style="font-size:12px;color:var(--ok)"></span>
+      <button class="btn sml pri" onclick="applyCTC3()">✅ C/T 적용</button>
+      <button class="btn sml warn" onclick="closeCTCalc3()">취소</button>
     </div>
   </div>
 </div>
