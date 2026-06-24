@@ -216,6 +216,7 @@
     <div class="nav-item" onclick="showView('sim')"><span class="ic">⚙️</span> 공정 시뮬레이션</div>
     <div class="nav-item" onclick="showView('scen')"><span class="ic">🗂</span> 시나리오 비교</div>
     <div class="nav-item" onclick="showView('ct')"><span class="ic">🧮</span> C/T 계산기</div>
+    <div class="nav-item" id="nav2d" style="display:none" onclick="showView('2d')"><span class="ic">📺</span> 2D 시뮬레이션</div>
     <div class="nav-group">라인 선택</div>
     <div class="nav-item" id="nl0" onclick="gotoSim(0)"><span class="ic">🏭</span> 조립 1라인</div>
     <div class="nav-item" id="nl1" onclick="gotoSim(1)"><span class="ic">🏭</span> 조립 2라인</div>
@@ -428,6 +429,29 @@
     </div>
   </section>
 
+  <!-- ─── 2D 컨베어 시뮬레이션 (3라인 전용) ─── -->
+  <section id="view-2d">
+    <div class="page-h">
+      <button class="hamb btn" onclick="toggleNav(true)">☰</button>
+      <h1>조립 3라인 C/PAD — 컨베어 2D 시뮬레이션</h1>
+    </div>
+    <div style="padding:12px 16px 16px">
+      <canvas id="cv2d" style="display:block;width:100%;border-radius:8px;background:#0f172a"></canvas>
+      <div style="margin-top:8px;font-size:11px;color:#64748b;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+        <span id="sim2dStatus" style="color:#f97316;font-weight:700;font-size:12px;min-width:200px"></span>
+        <span>피치: <b id="sim2dPitch" style="color:#60a5fa">-</b>초/대</span>
+        <span style="margin-left:auto;display:flex;gap:14px;flex-wrap:wrap">
+          <span><span style="color:#f97316">●</span> 다공정(1~6공정+SUB03)</span>
+          <span><span style="color:#22c55e">●</span> 고정작업자</span>
+          <span><span style="color:#6366f1">■</span> C/P JIG</span>
+          <span><span style="color:#22c55e">■</span> 정상</span>
+          <span><span style="color:#f59e0b">■</span> 주의</span>
+          <span><span style="color:#ef4444">■</span> 병목</span>
+        </span>
+      </div>
+    </div>
+  </section>
+
 </main>
 </div>
 
@@ -496,15 +520,17 @@ function G(){return state[curLine][curSub];}
 
 /* ─── 뷰 전환 ────────────────────────────────── */
 function showView(v){
+  if(v!=='2d'&&typeof _raf2d!=='undefined'&&_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}
   document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(el=>{
-    const map={'main':'메인','sim':'공정 시뮬레이션','scen':'시나리오 비교','ct':'C/T 계산기'};
+    const map={'main':'메인','sim':'공정 시뮬레이션','scen':'시나리오 비교','ct':'C/T 계산기','2d':'2D 시뮬레이션'};
     el.classList.remove('active');
     if(el.textContent.trim()===map[v])el.classList.add('active');
   });
   if(v==='main')renderMain();
   if(v==='scen')renderScen();
+  if(v==='2d')init2D();
   toggleNav(false);
 }
 function gotoSim(li){
@@ -512,8 +538,9 @@ function gotoSim(li){
   showView('sim');
   buildStabs();render();loadLineData();
   document.getElementById('simTitle').textContent=LINE_DEF[li].name+' — '+LINE_DEF[li].subs[0];
-  // 라인 nav 표시
   document.querySelectorAll('[id^=nl]').forEach((el,i)=>el.classList.toggle('active',i===li));
+  // 3라인일 때만 2D 시뮬레이션 메뉴 표시
+  document.getElementById('nav2d').style.display=li===2?'flex':'none';
 }
 function toggleNav(open){
   document.getElementById('side').classList.toggle('open',open);
@@ -1395,6 +1422,240 @@ function deleteCTSave(){
   localStorage.setItem('conv_ct_saves',JSON.stringify(saves));
   sel.value='';
   refreshCTLoadSel();
+}
+
+/* ─── 2D 컨베어 시뮬레이션 (3라인 전용) ─────────── */
+let _raf2d=null;
+
+function init2D(){
+  if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}
+  const cv=document.getElementById('cv2d');
+  if(!cv)return;
+  const W=760,H=460;
+  cv.width=W;cv.height=H;
+  const ctx=cv.getContext('2d');
+
+  // 피치 계산
+  const base=+document.getElementById('baseProd').value||205;
+  const pn=+document.getElementById('pitchRatio').value||0;
+  const wm=+document.getElementById('workMin').value||460;
+  const prod=pn===0?base:Math.round(base*pn/(pn+1));
+  const pitch=wm*60/prod;
+  document.getElementById('sim2dPitch').textContent=pitch.toFixed(1);
+
+  const rows=G().rows;
+  const AP=2.2; // 애니메이션 피치(초/스테이션)
+
+  // 하단 9개 공정 (rows 0~8)
+  const BNAMES=['1공정','2공정','3공정','4공정','5공정','6공정','7공정','8공정','9공정'];
+  const BOT=rows.slice(0,9).map((r,i)=>({
+    n:BNAMES[i], t:(r.task||'').replace(/,.*$/,'').trim(),
+    ct:r.ct||0, w:r.workers||1, multi:i<6,
+    load:pitch>0&&r.ct>0?r.ct/pitch*100:0
+  }));
+
+  // 상단 10개 공정 (display 왼→오 = 19공정→10공정)
+  // rows[9]=181, rows[10]=191
+  const TOP=Array.from({length:10},(_,d)=>{
+    const pnum=19-d;
+    const ri=pnum-10; // 0=10공정, 1=11공정
+    const r=ri>=0&&ri<=1?rows[9+ri]:null;
+    const load=r&&pitch>0&&r.ct>0?r.ct/pitch*100:0;
+    return{n:pnum+'공정',t:r?(r.task||'').replace(/,.*$/,'').trim():'',ct:r?r.ct:0,w:r?r.workers:0,empty:!r||!r.task,load};
+  });
+
+  // SUBs: rows[11]=에어백서브, rows[12]=센터페시아서브, rows[13]=SUB1, rows[14]=SUB2
+  const SR=rows.slice(11,15);
+  const SUBS=[
+    {relX:1.5,n:SR[2]?SR[2].name:'SUB1',t:SR[2]?(SR[2].task||'').split(',')[0].trim():'에어덕트/USB',w:SR[2]?SR[2].workers:1,hi:false},
+    {relX:2.5,n:SR[3]?SR[3].name:'SUB2',t:SR[3]?(SR[3].task||'').split(',')[0].trim():'AVN BRKT',w:SR[3]?SR[3].workers:1,hi:false},
+    {relX:3.4,n:SR[0]?SR[0].name:'에어백서브',t:SR[0]?(SR[0].task||'').split(',')[0].trim():'에어백 조립',w:SR[0]?SR[0].workers:1,hi:true},
+    {relX:4.6,n:SR[1]?SR[1].name:'센터페시아서브',t:SR[1]?(SR[1].task||'').split(',')[0].trim():'클러스터페시아',w:SR[1]?SR[1].workers:1,hi:false},
+  ];
+
+  // 레이아웃
+  const TY=88,BY=345,LX=68,RX=692,BW=624,CR=40,TW=24;
+  const SWB=BW/9,SWT=BW/10;
+  const SUB_Y=BY+54;
+  function bx(i){return LX+i*SWB+SWB/2;}
+  function tx(i){return LX+i*SWT+SWT/2;}
+  const SUB03_X=(bx(3)+bx(4))/2;
+
+  // 작업자 사이클 타이밍
+  const P1E=4*AP,P2E=P1E+AP*1.15,P3E=P2E+2*AP,TC=P3E+2.2*AP;
+  const V=SWB/AP;
+
+  function loadFill(l){return l>100?'#7f1d1d':l>85?'#78350f':l>0?'#14532d':'#1e293b';}
+  function loadStk(l){return l>100?'#ef4444':l>85?'#f59e0b':l>0?'#22c55e':'#334155';}
+
+  function rr(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+    ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+    ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+    ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+  }
+  function lerp(a,b,t){return a+(b-a)*t;}
+  function ease(t){return t<0.5?2*t*t:-1+(4-2*t)*t;}
+
+  // 작업자 위치
+  function wPos(s){
+    const wy=BY-35;
+    if(s<P1E) return{x:lerp(bx(0),bx(3),s/P1E),y:wy};
+    const mid=(P1E+P2E)/2;
+    if(s<mid){const p=ease((s-P1E)/(mid-P1E));return{x:lerp(bx(3),SUB03_X,p),y:lerp(wy,SUB_Y+20,p)};}
+    if(s<P2E){const p=ease((s-mid)/(P2E-mid));return{x:lerp(SUB03_X,bx(4),p),y:lerp(SUB_Y+20,wy,p)};}
+    if(s<P3E) return{x:lerp(bx(4),bx(5),(s-P2E)/(P3E-P2E)),y:wy};
+    return{x:lerp(bx(5),bx(0),ease((s-P3E)/(TC-P3E))),y:wy};
+  }
+  // 추적 지그 x
+  function tjx(s){
+    if(s<P1E) return lerp(bx(0),bx(3),s/P1E);
+    if(s<P2E) return lerp(bx(3),bx(4),(s-P1E)/(P2E-P1E));
+    if(s<P3E) return lerp(bx(4),bx(5),(s-P2E)/(P3E-P2E));
+    return bx(5)+V*(s-P3E);
+  }
+
+  // 작업자 원 그리기
+  function drawW(x,y,color,lbl,r=11){
+    const g=ctx.createRadialGradient(x,y,0,x,y,r+7);
+    g.addColorStop(0,color+'44');g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r+7,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='white';ctx.font='bold 7px Malgun Gothic';ctx.textAlign='center';
+    ctx.fillText(lbl,x,y+2.5);
+  }
+
+  let t0=null;
+  function frame(ts){
+    if(!t0)t0=ts;
+    const el=(ts-t0)/1000,sec=el%TC;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
+
+    // ── 벨트 트랙 (ㅁ자) ──
+    ctx.strokeStyle='#1e3a5f';ctx.lineWidth=TW;
+    ctx.beginPath();
+    ctx.moveTo(LX+CR,TY);ctx.lineTo(RX-CR,TY);ctx.arcTo(RX,TY,RX,TY+CR,CR);
+    ctx.lineTo(RX,BY-CR);ctx.arcTo(RX,BY,RX-CR,BY,CR);
+    ctx.lineTo(LX+CR,BY);ctx.arcTo(LX,BY,LX,BY-CR,CR);
+    ctx.lineTo(LX,TY+CR);ctx.arcTo(LX,TY,LX+CR,TY,CR);
+    ctx.closePath();ctx.stroke();
+    ctx.strokeStyle='#243553';ctx.lineWidth=TW-8;ctx.stroke();
+
+    // 벨트 줄무늬 → (하단)
+    ctx.save();ctx.beginPath();ctx.rect(LX,BY-TW/2,BW,TW);ctx.clip();
+    ctx.strokeStyle='#1a2d45';ctx.lineWidth=1.2;
+    const sp=(el*V)%36;
+    for(let x=LX-36+sp%36;x<RX+36;x+=36){ctx.beginPath();ctx.moveTo(x,BY-TW/2);ctx.lineTo(x+20,BY+TW/2);ctx.stroke();}
+    ctx.restore();
+    // 벨트 줄무늬 ← (상단)
+    ctx.save();ctx.beginPath();ctx.rect(LX,TY-TW/2,BW,TW);ctx.clip();
+    const sp2=(el*V)%36;
+    for(let x=RX+36-sp2%36;x>LX-36;x-=36){ctx.beginPath();ctx.moveTo(x,TY-TW/2);ctx.lineTo(x-20,TY+TW/2);ctx.stroke();}
+    ctx.restore();
+
+    // 방향 텍스트
+    ctx.fillStyle='#1e3a5f';ctx.font='bold 9px Malgun Gothic';ctx.textAlign='center';
+    ctx.fillText('→  →  →  컨베어 진행  →  →  →',W/2,BY+5);
+    ctx.fillText('←  ←  ←  컨베어 진행  ←  ←  ←',W/2,TY+5);
+
+    // 스키드 회전 코너
+    [{cx:RX,flip:false},{cx:LX,flip:true}].forEach(({cx,flip})=>{
+      ctx.strokeStyle='#0284c7';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);
+      [TY+CR,BY-CR].forEach(cy=>{
+        ctx.beginPath();ctx.arc(cx,cy,14,flip?0:Math.PI,flip?Math.PI:0);ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      ctx.save();ctx.translate(cx,(TY+BY)/2);ctx.rotate(flip?Math.PI/2:-Math.PI/2);
+      ctx.fillStyle='#0369a1';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
+      ctx.fillText('↑ 스키드 이송 ↑',0,0);ctx.restore();
+      ctx.fillStyle='#075985';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
+      ctx.fillText('회전',cx,(TY+BY)/2+16);
+    });
+
+    // ── 배경 지그 (4개, 균등 간격) ──
+    const JG=BW/4;
+    for(let j=0;j<5;j++){
+      const jb=LX+((el*V+j*JG)%BW);
+      if(jb<=RX+2){rr(jb-18,BY-8,36,16,3);ctx.fillStyle='#1e1b4b';ctx.fill();ctx.strokeStyle='#312e81';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#4338ca';ctx.font='7px Malgun Gothic';ctx.textAlign='center';ctx.fillText('JIG',jb,BY+4);}
+      const jt=RX-((el*V+j*JG)%BW);
+      if(jt>=LX-2){rr(jt-18,TY-8,36,16,3);ctx.fillStyle='#1e1b4b';ctx.fill();ctx.strokeStyle='#312e81';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#4338ca';ctx.font='7px Malgun Gothic';ctx.textAlign='center';ctx.fillText('JIG',jt,TY+4);}
+    }
+
+    // ── 추적 지그 (하이라이트) ──
+    const tx_=tjx(sec);
+    if(tx_<RX+60){rr(tx_-23,BY-10,46,20,4);ctx.fillStyle='#1d4ed8';ctx.fill();ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#bfdbfe';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';ctx.fillText('C/P JIG',tx_,BY+4);}
+
+    // ── 하단 공정 박스 ──
+    const BBOX=BY-82;
+    BOT.forEach((st,i)=>{
+      const cx=bx(i),bw2=SWB-4,bx2=LX+i*SWB+2;
+      ctx.fillStyle=loadFill(st.load);rr(bx2,BBOX,bw2,68,5);ctx.fill();
+      ctx.strokeStyle=st.multi?'rgba(249,115,22,0.8)':loadStk(st.load);ctx.lineWidth=st.multi?2:1.5;ctx.stroke();
+      ctx.fillStyle=st.multi?'#93c5fd':'#a8a29e';ctx.font='bold 10px Malgun Gothic';ctx.textAlign='center';ctx.fillText(st.n,cx,BBOX+16);
+      ctx.fillStyle='#64748b';ctx.font='8px Malgun Gothic';ctx.fillText(st.t.slice(0,9),cx,BBOX+28);
+      if(st.ct>0){ctx.fillStyle=loadStk(st.load);ctx.font='bold 9px Malgun Gothic';ctx.fillText(st.ct+'초',cx,BBOX+42);}
+      // 인원 배지
+      ctx.fillStyle=st.multi?'rgba(249,115,22,0.15)':'rgba(22,163,74,0.15)';rr(cx-13,BBOX+52,26,12,3);ctx.fill();
+      ctx.fillStyle=st.multi?'#f97316':'#4ade80';ctx.font='7px Malgun Gothic';ctx.fillText(st.multi?'다공정':st.w+'인',cx,BBOX+61);
+    });
+    // 다공정 묶음 박스
+    ctx.strokeStyle='rgba(249,115,22,0.5)';ctx.lineWidth=1.2;ctx.setLineDash([4,3]);
+    ctx.strokeRect(LX+2,BBOX-8,SWB*6-4,76);ctx.setLineDash([]);
+    ctx.fillStyle='#f97316';ctx.font='bold 9px Malgun Gothic';ctx.textAlign='center';
+    ctx.fillText('▼ 1인 다공정 (1~6공정 + SUB03) ▼',LX+SWB*3,BBOX-12);
+
+    // ── 상단 공정 박스 ──
+    const TBOX=TY+14;
+    TOP.forEach((st,i)=>{
+      const cx=tx(i),tw2=SWT-4,tx2=LX+i*SWT+2;
+      ctx.fillStyle=st.empty?'#111827':loadFill(st.load);rr(tx2,TBOX,tw2,62,5);ctx.fill();
+      ctx.strokeStyle=st.empty?'#1f2937':loadStk(st.load);ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle=st.empty?'#374151':'#a8a29e';ctx.font='bold 9px Malgun Gothic';ctx.textAlign='center';ctx.fillText(st.n,cx,TBOX+16);
+      if(!st.empty){
+        ctx.fillStyle='#64748b';ctx.font='8px Malgun Gothic';ctx.fillText(st.t.slice(0,9),cx,TBOX+28);
+        if(st.ct>0){ctx.fillStyle=loadStk(st.load);ctx.font='bold 8px Malgun Gothic';ctx.fillText(st.ct+'초',cx,TBOX+42);}
+        if(st.w>0){ctx.fillStyle='rgba(22,163,74,0.15)';rr(cx-11,TBOX+50,22,10,3);ctx.fill();ctx.fillStyle='#4ade80';ctx.font='7px Malgun Gothic';ctx.fillText(st.w+'인',cx,TBOX+58);}
+      }
+    });
+
+    // ── SUB 박스 (하단 벨트 아래) ──
+    SUBS.forEach(s=>{
+      const sx=LX+s.relX*SWB,sw2=SWB*0.86,sh=48;
+      ctx.strokeStyle=s.hi?'#ea580c':'#475569';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+      ctx.beginPath();ctx.moveTo(sx,BY+TW/2+2);ctx.lineTo(sx,SUB_Y);ctx.stroke();ctx.setLineDash([]);
+      rr(sx-sw2/2,SUB_Y,sw2,sh,5);ctx.fillStyle=s.hi?'#431407':'#1c1917';ctx.fill();
+      ctx.strokeStyle=s.hi?'#ea580c':'#44403c';ctx.lineWidth=s.hi?1.5:1;if(s.hi)ctx.setLineDash([5,3]);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=s.hi?'#fb923c':'#78716c';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';ctx.fillText(s.n.slice(0,8),sx,SUB_Y+14);
+      ctx.fillStyle=s.hi?'#fed7aa':'#57534e';ctx.font='8px Malgun Gothic';ctx.fillText(s.t.slice(0,9),sx,SUB_Y+26);
+      ctx.fillStyle=s.hi?'rgba(249,115,22,0.15)':'rgba(22,163,74,0.15)';rr(sx-11,SUB_Y+34,22,10,3);ctx.fill();
+      ctx.fillStyle=s.hi?'#f97316':'#4ade80';ctx.font='7px Malgun Gothic';ctx.fillText(s.w+'인',sx,SUB_Y+42);
+    });
+
+    // ── 고정 작업자 (7~9공정) ──
+    for(let i=6;i<9;i++) drawW(bx(i),BBOX+80,'#15803d','작',7);
+    TOP.forEach((st,i)=>{if(st.w>0&&!st.empty) drawW(tx(i),TBOX+74,'#15803d','작',7);});
+
+    // ── 다공정 작업자 (메인) ──
+    const wp=wPos(sec);
+    const isRet=sec>P3E,isSub=sec>=P1E&&sec<=P2E;
+    const wc=isRet?'#475569':isSub?'#9333ea':'#ea580c';
+    drawW(wp.x,wp.y,wc,isRet?'복귀':isSub?'SUB':'작업자',12);
+
+    // ── 상태 텍스트 ──
+    let ph='';
+    if(sec<P1E){const si=Math.min(Math.floor(sec/AP),3);ph='→ '+BOT[si].n+' 작업 중'+(BOT[si].ct?' ('+BOT[si].ct+'초)':'');}
+    else if(sec<P2E) ph='↕ SUB03 에어백 작업 중';
+    else if(sec<P3E){const si=4+Math.min(Math.floor((sec-P2E)/AP),1);ph='→ '+BOT[si].n+' 작업 중'+(BOT[si].ct?' ('+BOT[si].ct+'초)':'');}
+    else ph='← 1공정으로 복귀';
+    const el2=document.getElementById('sim2dStatus');
+    if(el2)el2.textContent='다공정 작업자: '+ph;
+
+    _raf2d=requestAnimationFrame(frame);
+  }
+  _raf2d=requestAnimationFrame(frame);
 }
 
 /* ─── 초기화 ──────────────────────────────────── */
