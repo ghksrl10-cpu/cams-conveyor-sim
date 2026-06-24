@@ -1613,7 +1613,18 @@ function init2D(){
 
   // ── 피치 기반 애니메이션 타이밍 ──
   const simSpeedX=+document.getElementById('simSpeed').value||20;
-  const PANIM=Math.max(0.5, pitch/simSpeedX); // 피치 연동 (배속 슬라이더)
+  // 병목 C/T = 입력된 값 중 최대값 기준 (다공정 그룹은 합계÷인원)
+  const grpCTTotal=botRows.slice(0,MN).reduce((s,r)=>s+(r.ct||0),0)
+                  +subRows.reduce((s,r)=>s+(r.ct||0),0);
+  const grpEffCT=MN>0&&multiWorkers>0?grpCTTotal/multiWorkers:0;
+  const singleMaxCT=Math.max(
+    ...botRows.slice(MN).map(r=>r.ct||0),
+    ...topRows.map(r=>r.ct||0)
+  );
+  const bottleneckCT=Math.max(grpEffCT, singleMaxCT);
+  // C/T 입력값 있으면 그 병목으로, 없으면 피치로 fallback
+  const animBase=bottleneckCT>0?bottleneckCT:pitch;
+  const PANIM=Math.max(0.5, animBase/simSpeedX);
   const TR_F=0.18; // transit 비율
 
 
