@@ -1534,6 +1534,7 @@ function init2D(){
   const topRows=mainRows.slice(half);          // N/2+1~N 공정 (우→좌, 역순 없음: [0]=11공정=우측)
   const NB=Math.max(1,botRows.length), NT=Math.max(1,topRows.length);
   const MN=Math.min(multiSpan,NB);
+  const multiWorkers=botRows[0]?Math.max(1,botRows[0].workers||1):1;
 
   // ── 레이아웃 ──
   const PAD=50, TY=82, BY=362;
@@ -1701,14 +1702,14 @@ function init2D(){
       rr(cx-11,BTOP+39,22,11,3);
       ctx.fillStyle=isM?'rgba(249,115,22,0.18)':'rgba(22,163,74,0.15)';ctx.fill();
       ctx.fillStyle=isM?'#f97316':'#4ade80';ctx.font='6px Malgun Gothic';
-      ctx.fillText(isM?'다공정':w+'인',cx,BTOP+48);
+      ctx.fillText(isM?multiWorkers+'인':w+'인',cx,BTOP+48);
       if(!isM&&w>0)drawW(cx,BTOP+BBOXH+13,'#15803d',w+'명',8);
     });
     if(MN>0){
       ctx.strokeStyle='rgba(249,115,22,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
       ctx.strokeRect(LX+1,BTOP-6,BW/NB*MN-2,BBOXH+12);ctx.setLineDash([]);
       ctx.fillStyle='#f97316';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
-      ctx.fillText(`▼ 1인 다공정 (1~${MN}공정) ▼`,LX+BW/NB*MN/2,BTOP-8);
+      ctx.fillText(`▼ ${multiWorkers}인 다공정 (1~${MN}공정) ▼`,LX+BW/NB*MN/2,BTOP-8);
     }
 
     // ── 상단 공정 박스 ──
