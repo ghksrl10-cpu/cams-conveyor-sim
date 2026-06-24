@@ -458,6 +458,11 @@
       <div style="margin-top:8px;font-size:11px;color:#64748b;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
         <span id="sim2dStatus" style="color:#f97316;font-weight:700;font-size:12px;min-width:200px"></span>
         <span>피치: <b id="sim2dPitch" style="color:#60a5fa">-</b>초/대</span>
+        <span style="display:flex;align-items:center;gap:6px">
+          배속:
+          <input type="range" id="simSpeed" min="1" max="50" value="20" style="width:80px;cursor:pointer" oninput="document.getElementById('simSpeedVal').textContent=this.value+'×';init2D()">
+          <b id="simSpeedVal" style="color:#a78bfa;min-width:28px">20×</b>
+        </span>
         <span style="margin-left:auto;display:flex;gap:14px;flex-wrap:wrap">
           <span><span style="color:#f97316">●</span> 다공정(1~6공정+SUB03)</span>
           <span><span style="color:#22c55e">●</span> 고정작업자</span>
@@ -1607,7 +1612,8 @@ function init2D(){
   }
 
   // ── 피치 기반 애니메이션 타이밍 ──
-  const PANIM=3.0; // 초/스테이션
+  const simSpeedX=+document.getElementById('simSpeed').value||20;
+  const PANIM=Math.max(0.5, pitch/simSpeedX); // 피치 연동 (배속 슬라이더)
   const TR_F=0.18; // transit 비율
 
 
