@@ -346,15 +346,15 @@
           <thead>
             <tr>
               <th class="rowlab">컨베어</th>
-              <th style="width:74px">공정명</th>
+              <th style="width:88px">공정명</th>
               <th style="width:52px">그룹</th>
               <th style="min-width:200px;text-align:left;padding-left:8px">공정작업</th>
               <th style="width:42px">공백</th>
-              <th style="width:76px">C/T(초)</th>
+              <th style="width:88px">C/T(초)</th>
               <th style="width:64px">인원</th>
               <th style="width:86px">실C/T(초)</th>
               <th style="width:76px">여유율</th>
-              <th style="min-width:120px;text-align:left;padding-left:6px">체결 수량</th>
+              <th style="width:96px;text-align:left;padding-left:6px">체결수량</th>
               <th style="min-width:110px;text-align:left;padding-left:6px">비고(관리항목)</th>
               <th style="width:52px">삭제</th>
             </tr>
@@ -667,10 +667,10 @@ function render(){
       ${r.taskSpan===0?'':`<td class="val ${r.empty?'off':ctCls}" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${r.empty?'var(--mut)':''}"`:''}>${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>`}
       ${r.taskSpan===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
       ${r.taskSpan===0?'':(curLine===2?`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle;padding:6px 8px"`:'style="padding:6px 8px"'}><div style="display:flex;flex-direction:column;gap:5px">
-        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">너트</span><input type="number" value="${r.fNut||0}" min="0" onchange="updNum(${i},'fNut',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
-        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">스크류</span><input type="number" value="${r.fScrew||0}" min="0" onchange="updNum(${i},'fScrew',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
-        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">S육각</span><input type="number" value="${r.fShex||0}" min="0" onchange="updNum(${i},'fShex',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
-        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">B육각</span><input type="number" value="${r.fBhex||0}" min="0" onchange="updNum(${i},'fBhex',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
+        <div style="display:flex;align-items:center;gap:2px"><span style="font-size:11px;width:30px;color:var(--mut)">너트</span><input type="number" value="${r.fNut||0}" min="0" onchange="updNum(${i},'fNut',+this.value)" style="width:38px;text-align:right;font-size:12px" ${r.empty?'disabled':''}><span style="font-size:10px;color:var(--mut)">EA</span></div>
+        <div style="display:flex;align-items:center;gap:2px"><span style="font-size:11px;width:30px;color:var(--mut)">스크류</span><input type="number" value="${r.fScrew||0}" min="0" onchange="updNum(${i},'fScrew',+this.value)" style="width:38px;text-align:right;font-size:12px" ${r.empty?'disabled':''}><span style="font-size:10px;color:var(--mut)">EA</span></div>
+        <div style="display:flex;align-items:center;gap:2px"><span style="font-size:11px;width:30px;color:var(--mut)">S육각</span><input type="number" value="${r.fShex||0}" min="0" onchange="updNum(${i},'fShex',+this.value)" style="width:38px;text-align:right;font-size:12px" ${r.empty?'disabled':''}><span style="font-size:10px;color:var(--mut)">EA</span></div>
+        <div style="display:flex;align-items:center;gap:2px"><span style="font-size:11px;width:30px;color:var(--mut)">B육각</span><input type="number" value="${r.fBhex||0}" min="0" onchange="updNum(${i},'fBhex',+this.value)" style="width:38px;text-align:right;font-size:12px" ${r.empty?'disabled':''}><span style="font-size:10px;color:var(--mut)">EA</span></div>
       </div></td>`:`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>`)}
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea rows="2" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'note',this.value);autoSaveCT()" placeholder="관리항목">${esc(r.note)}</textarea></td>`}
       <td style="text-align:center;white-space:nowrap;vertical-align:middle">
