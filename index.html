@@ -1706,30 +1706,31 @@ function init2D(){
       ctx.fillStyle='#38bdf8';ctx.font='12px Malgun Gothic';ctx.fillText('↻',cx,midY+18);
     });
 
-    // ── 하단 공정 박스 ──
+    // ── 하단 공정 박스 (6공정=2칸 너비) ──
     const fs=NB>15?7:NB>11?8:NB>8?9:10;
-    const DH=22; // 대기 박스 높이
-    botRows.forEach((r,i)=>{
-      const cx=bx(i),bw2=BW/NB-3,bx2=LX+i*BW/NB+1.5;
+    const slotW=BW/NB; // 기본 1칸 너비
+    let skipBot=false;
+    for(let i=0;i<botRows.length;i++){
+      if(skipBot){skipBot=false;continue;}
+      const r=botRows[i];
       const ct=r.ct||0,isM=i<MN,w=r.workers||0;
-      const isDaegi=r.empty||r.name==='대기'||(r.name===''&&!r.task&&!ct);
       const procNum=i+1;
+      const isDaegi=r.empty||r.name==='대기'||(r.name===''&&!r.task&&!ct);
+      // 6공정이면 2칸 너비 (다음 슬롯 흡수)
+      const is6=(r.name==='6공정'||procNum===6)&&i+1<botRows.length;
+      const span=is6?2:1;
+      const bx2=LX+i*slotW+1.5;
+      const bw2=slotW*span-3;
+      const cx=bx2+bw2/2;
+      const dispName=isDaegi?`${procNum}공정`:(r.name||`${procNum}공정`).slice(0,6);
+      rr(bx2,BTOP,bw2,BBOXH,3);
+      ctx.fillStyle=isDaegi?'#0f1f33':loadFill(ct);ctx.fill();
+      ctx.strokeStyle=isM?'#f97316':(isDaegi?'#1e3a5f':loadStk(ct));ctx.lineWidth=isM?2:1.5;ctx.stroke();
+      ctx.fillStyle=isM?'#93c5fd':(isDaegi?'#334155':'#e2e8f0');ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillText(dispName,cx,BTOP+11);
       if(isDaegi){
-        // 대기: 하단에 붙인 얇은 박스
-        const dy=BTOP+BBOXH-DH;
-        rr(bx2,dy,bw2,DH,3);
-        ctx.fillStyle='#0f1f33';ctx.fill();
-        ctx.strokeStyle='#1e3a5f';ctx.lineWidth=1;ctx.stroke();
-        ctx.fillStyle='#334155';ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
-        ctx.fillText(`${procNum}공정`,cx,dy+9);
-        ctx.fillStyle='#1e3a5f';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;
-        ctx.fillText('대기',cx,dy+18);
+        ctx.fillStyle='#1e3a5f';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText('대기',cx,BTOP+22);
       } else {
-        rr(bx2,BTOP,bw2,BBOXH,3);
-        ctx.fillStyle=loadFill(ct);ctx.fill();
-        ctx.strokeStyle=isM?'#f97316':loadStk(ct);ctx.lineWidth=isM?2:1.5;ctx.stroke();
-        ctx.fillStyle=isM?'#93c5fd':'#e2e8f0';ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
-        ctx.fillText((r.name||`${procNum}공`).slice(0,6),cx,BTOP+11);
         const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
         if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+22);}
         if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+33);}
@@ -1742,12 +1743,13 @@ function init2D(){
           drawW(cx,WY_BOT,'#15803d',w+'명',9);
         }
       }
-    });
+      if(is6)skipBot=true;
+    }
     if(MN>0){
       ctx.strokeStyle='rgba(249,115,22,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
-      ctx.strokeRect(LX+1,BTOP-4,BW/NB*MN-2,BBOXH+8);ctx.setLineDash([]);
+      ctx.strokeRect(LX+1,BTOP-4,slotW*MN-2,BBOXH+8);ctx.setLineDash([]);
       ctx.fillStyle='#f97316';ctx.font='bold 9px Malgun Gothic';ctx.textAlign='center';
-      ctx.fillText(`▼ ${multiWorkers}인 다공정 (1~${MN}공정) ▼`,LX+BW/NB*MN/2,BTOP-6);
+      ctx.fillText(`▼ ${multiWorkers}인 다공정 (1~${MN}공정) ▼`,LX+slotW*MN/2,BTOP-6);
     }
 
     // ── 상단 공정 박스 ──
@@ -1757,22 +1759,15 @@ function init2D(){
       const ct=r.ct||0;
       const isDaegiT=r.empty||r.name==='대기'||(r.name===''&&!r.task&&!ct);
       const procNumT=half+i+1;
+      const dispNameT=isDaegiT?`${procNumT}공정`:(r.name||`${procNumT}공정`).slice(0,6);
+      rr(tx2,TTOP,tw2,TBOXH,3);
+      ctx.fillStyle=isDaegiT?'#0f1f33':loadFill(ct);ctx.fill();
+      ctx.strokeStyle=isDaegiT?'#1e3a5f':loadStk(ct);ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle=isDaegiT?'#334155':'#e2e8f0';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillText(dispNameT,cx,TTOP+11);
       if(isDaegiT){
-        // 대기: 상단에 붙인 얇은 박스
-        const dy2=TTOP;
-        rr(tx2,dy2,tw2,DH,3);
-        ctx.fillStyle='#0f1f33';ctx.fill();
-        ctx.strokeStyle='#1e3a5f';ctx.lineWidth=1;ctx.stroke();
-        ctx.fillStyle='#334155';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
-        ctx.fillText(`${procNumT}공정`,cx,dy2+9);
-        ctx.fillStyle='#1e3a5f';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;
-        ctx.fillText('대기',cx,dy2+18);
+        ctx.fillStyle='#1e3a5f';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;ctx.fillText('대기',cx,TTOP+22);
       } else {
-        rr(tx2,TTOP,tw2,TBOXH,3);
-        ctx.fillStyle=loadFill(ct);ctx.fill();
-        ctx.strokeStyle=loadStk(ct);ctx.lineWidth=1.5;ctx.stroke();
-        ctx.fillStyle='#e2e8f0';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
-        ctx.fillText((r.name||`${procNumT}공`).slice(0,6),cx,TTOP+11);
         const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
         if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;ctx.fillText(tk,cx,TTOP+22);}
         if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fst}px Malgun Gothic`;ctx.fillText(ct+'초',cx,TTOP+33);}
