@@ -650,9 +650,14 @@ function render(){
     if(!r.empty&&realCT>0)ctCls=realCT>pitch?'ng-c':load>85?'warn-c':'ok-c';
     const emC=r.empty?'empty-c':'',offC=r.empty?'off':'';
     const slColor=slackPct===null?'':+slackPct<0?'var(--ng)':+slackPct<15?'var(--warn)':'var(--ok)';
+    const isSub=r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
     const tr=document.createElement('tr');
+    if(isSub)tr.style.cssText='background:linear-gradient(90deg,#1a0a2e 0%,#110d1f 100%);border-left:3px solid #7c3aed';
     tr.innerHTML=`
-      <td class="rowlab">${r.conv}</td>
+      <td class="rowlab" style="${isSub?'color:#a78bfa;font-weight:800':''}">
+        ${isSub?`<div style="font-size:9px;color:#7c3aed;font-weight:700;letter-spacing:1px">SUB</div>`:''}
+        ${r.conv}
+      </td>
       <td class="${emC}"><input value="${esc(r.name)}" oninput="upd(${i},'name',this.value)" style="font-weight:700"></td>
       <td class="${emC}"><input value="${esc(r.group||'')}" oninput="upd(${i},'group',this.value)" placeholder="—" style="text-align:center;font-weight:700;color:var(--warn)"></td>
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea rows="${span>1?4:2}" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
@@ -780,7 +785,23 @@ function saveLineData(){saveCTData();}
 function toggleEmpty(i,v){G().rows[i].empty=v;render();}
 function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});render();}
 function insertRow(i){const s=G();s.rows.splice(i,0,{conv:0,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});s.rows.forEach((r,idx)=>r.conv=idx+1);render();}
-function delRow(i){if(!confirm('삭제하시겠습니까?'))return;G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();}
+let _delUndo=null;
+function delRow(i){
+  if(!confirm('삭제하시겠습니까?'))return;
+  _delUndo={row:JSON.parse(JSON.stringify(G().rows[i])),idx:i};
+  G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();
+  const n=document.getElementById('lineSaveNote');
+  n.innerHTML='<span style="color:#f97316">삭제됨 — <button class="btn sml" onclick="undoDelRow()" style="padding:2px 8px">↩ 되돌리기</button></span>';
+  setTimeout(()=>{if(n.innerHTML.includes('되돌리기'))n.textContent='';},10000);
+}
+function undoDelRow(){
+  if(!_delUndo)return;
+  G().rows.splice(_delUndo.idx,0,_delUndo.row);
+  G().rows.forEach((r,j)=>r.conv=j+1);
+  _delUndo=null;render();
+  document.getElementById('lineSaveNote').textContent='복구 완료';
+  setTimeout(()=>document.getElementById('lineSaveNote').textContent='',2000);
+}
 function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[curLine][curSub]={rows:makeRows(curLine,curSub)};render();}
 
 /* ─── 기아 인정표 C/T 계산기 ─────────────────── */
