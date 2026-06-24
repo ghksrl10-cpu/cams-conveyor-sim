@@ -1542,15 +1542,15 @@ function init2D(){
   const multiWorkers=botRows[0]?Math.max(1,botRows[0].workers||1):1;
 
   // ── 레이아웃 ──
-  const PAD=50, TY=82, BY=375;
+  const PAD=50, TY=82, BY=390;
   const LX=PAD, RX=W-PAD;
   const BW=RX-LX, BH=BY-TY;
   const CR=34, TW=20;
-  const BBOXH=60, BPADY=8, TBOXH=58, TPADY=8;
-  const BTOP=BY-TW/2-BBOXH-BPADY;
+  const BBOXH=58, BPADY=24, TBOXH=58, TPADY=8;
+  const BTOP=BY-TW/2-BBOXH-BPADY;  // 박스 위쪽 Y (벨트와 간격 확보)
   const TTOP=TY+TW/2+TPADY;
-  const WY_BOT=BTOP-16;  // 하단 작업자 Y (박스 위, 루프 안쪽)
-  const WY_TOP=TTOP-16;  // 상단 작업자 Y (박스 위, 벨트 바깥쪽)
+  const WY_BOT=BTOP+BBOXH+14;  // 하단 작업자 Y (박스 아래)
+  const WY_TOP=TTOP-16;         // 상단 작업자 Y (박스 위, 벨트 바깥쪽)
   const bx=i=>LX+(i+0.5)*BW/NB;
   const tx_=i=>RX-(i+0.5)*BW/NT;
 
