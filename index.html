@@ -668,9 +668,10 @@ function render(){
         <div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;width:44px;color:var(--mut)">B육각</span><input type="number" value="${r.fBhex||0}" min="0" onchange="updNum(${i},'fBhex',+this.value)" style="width:54px;text-align:right" ${r.empty?'disabled':''}><span style="font-size:12px;color:var(--mut)">EA</span></div>
       </div></td>`:`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>`)}
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea rows="2" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'note',this.value);autoSaveCT()" placeholder="관리항목">${esc(r.note)}</textarea></td>`}
-      <td style="text-align:center;white-space:nowrap">
-        <button class="btn sml" onclick="openDist(${i})" style="margin-bottom:3px">🔀 배분</button><br>
-        <button class="btn sml warn" onclick="delRow(${i})">삭제</button>
+      <td style="text-align:center;white-space:nowrap;vertical-align:middle">
+        <button class="btn sml" onclick="insertRow(${i})" style="margin-bottom:3px;width:52px">+ 삽입</button><br>
+        <button class="btn sml" onclick="openDist(${i})" style="margin-bottom:3px;width:52px">🔀 배분</button><br>
+        <button class="btn sml warn" onclick="delRow(${i})" style="width:52px">삭제</button>
       </td>`;
     tbody.appendChild(tr);
   });
@@ -777,7 +778,8 @@ function loadLineData(){
 }
 function saveLineData(){saveCTData();}
 function toggleEmpty(i,v){G().rows[i].empty=v;render();}
-function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:''});render();}
+function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});render();}
+function insertRow(i){const s=G();s.rows.splice(i,0,{conv:0,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});s.rows.forEach((r,idx)=>r.conv=idx+1);render();}
 function delRow(i){if(!confirm('삭제하시겠습니까?'))return;G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();}
 function resetRows(){if(!confirm('초기화하시겠습니까?'))return;state[curLine][curSub]={rows:makeRows(curLine,curSub)};render();}
 
