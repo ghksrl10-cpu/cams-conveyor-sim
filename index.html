@@ -500,22 +500,22 @@ const _C3T='카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초
 const _C3F='너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA';
 const _C3N='토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것';
 const DEF_CPAD=[
-  {name:'111',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:6, workerSpan:6, ctSpan:6},
-  {name:'121',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'131',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'141',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'142',              task:_C3T, group:'A',   fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'143',              task:'',   group:'A',   fastener:'',   note:'',   empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'151',              task:'클러스터, 오디오',                      group:'',    fastener:'', note:'', empty:false},
-  {name:'152',              task:'패드부착, AVN 조립',                    group:'',    fastener:'', note:'', empty:false},
-  {name:'161',              task:'퓨즈커버 조립, 글러브 박스 조립',        group:'',    fastener:'', note:'', empty:false},
-  {name:'171',              task:'센터페시아 조립',                        group:'',    fastener:'', note:'', empty:false},
-  {name:'181',              task:'',                                       group:'',    fastener:'', note:'', empty:true},
-  {name:'191',              task:'전장검사',                               group:'',    fastener:'', note:'', empty:false},
-  {name:'에어백 서브1',     task:'에어백 조립',                            group:'SUB', fastener:'', note:'', empty:false},
-  {name:'센터페시아 서브1', task:'클러스터 페시아, 스위치, 에어덕트',      group:'SUB', fastener:'', note:'', empty:false},
-  {name:'SUB1',             task:'에어덕트, USB 모듈',                     group:'SUB', fastener:'', note:'', empty:false},
-  {name:'SUB2',             task:'AVN BRKT, LTE 모듈 (AVN 사양)',          group:'SUB', fastener:'', note:'', empty:false},
+  {name:'1공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:6, workerSpan:6, ctSpan:6},
+  {name:'2공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
+  {name:'3공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
+  {name:'4공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
+  {name:'5공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
+  {name:'6공정',  task:'',   group:'A', fastener:'',   note:'',   empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
+  {name:'7공정',  task:'클러스터, 오디오',              group:'', fastener:'', note:'', empty:false},
+  {name:'8공정',  task:'패드부착, AVN 조립',            group:'', fastener:'', note:'', empty:false},
+  {name:'9공정',  task:'퓨즈커버 조립, 글러브 박스 조립', group:'', fastener:'', note:'', empty:false},
+  {name:'10공정', task:'센터페시아 조립',               group:'', fastener:'', note:'', empty:false},
+  {name:'11공정', task:'',                              group:'', fastener:'', note:'', empty:true},
+  {name:'12공정', task:'전장검사',                      group:'', fastener:'', note:'', empty:false},
+  {name:'SUB03 에어백', task:'에어백 조립',             group:'SUB', fastener:'', note:'', empty:false},
+  {name:'센터페시아 SUB', task:'클러스터 페시아, 스위치, 에어덕트', group:'SUB', fastener:'', note:'', empty:false},
+  {name:'SUB1',   task:'에어덕트, USB 모듈',            group:'SUB', fastener:'', note:'', empty:false},
+  {name:'SUB2',   task:'AVN BRKT, LTE 모듈 (AVN 사양)', group:'SUB', fastener:'', note:'', empty:false},
 ];
 function makeRows(li,si){
   if(li<2) // 조립 1·2라인
