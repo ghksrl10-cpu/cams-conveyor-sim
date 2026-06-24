@@ -450,6 +450,8 @@
       <h1>조립 3라인 C/PAD — 컨베어 2D 시뮬레이션</h1>
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}loadLineData();init2D();">🔄 불러오기</button>
+        <button class="btn" style="font-size:13px;padding:6px 14px" onclick="exportSimConfig()">💾 내보내기</button>
+        <label class="btn" style="font-size:13px;padding:6px 14px;cursor:pointer">📂 가져오기<input type="file" accept=".json" style="display:none" onchange="importSimConfig(this)"></label>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="gotoSim(2)">📋 공정입력</button>
       </div>
     </div>
@@ -564,6 +566,35 @@ function gotoSim(li){
   buildStabs();loadLineData();
   document.getElementById('simTitle').textContent=LINE_DEF[li].name+' — '+LINE_DEF[li].subs[0];
   document.querySelectorAll('[id^=nl]').forEach((el,i)=>el.classList.toggle('active',i===li));
+}
+function exportSimConfig(){
+  // localStorage의 conv_struct 키들 전부 수집
+  const data={};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith('conv_struct'))data[k]=JSON.parse(localStorage.getItem(k)||'null');
+  }
+  // 시나리오도 포함
+  const sc=localStorage.getItem('conv_scenarios');
+  if(sc)data['conv_scenarios']=JSON.parse(sc);
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='conveyor_config_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+function importSimConfig(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      Object.entries(data).forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)));
+      alert('가져오기 완료! 불러오기 버튼을 눌러주세요.');
+      input.value='';
+    }catch(err){alert('파일 오류: '+err.message);}
+  };
+  reader.readAsText(file);
 }
 function goto2D(){
   if(curLine!==2){curLine=2;curSub=0;buildStabs();loadLineData();}
