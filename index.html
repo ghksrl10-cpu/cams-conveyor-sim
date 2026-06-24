@@ -1632,19 +1632,21 @@ function init2D(){
     ctx.fillStyle='#fff';ctx.font='bold 7px Malgun Gothic';ctx.textAlign='center';ctx.fillText(lbl,x,y+2.5);
   }
 
-  // ── SUB 부모 공정 위치 계산 (allRows 상 앞 mainRow 기준) ──
-  function subParentX(subR){
+  // ── SUB 부모 공정 위치 계산 (항상 하단 벨트 아래에 표시) ──
+  function subParentBotX(subR){
     const si=allRows.indexOf(subR);
+    // 1) allRows에서 이 SUB 바로 앞 mainRow 찾기
     for(let k=si-1;k>=0;k--){
       const mr=allRows[k];
       if(!isSUB(mr)){
         const bi=botRows.indexOf(mr);
-        if(bi>=0)return{x:bx(bi),onBot:true};
+        if(bi>=0)return bx(bi); // 하단 공정 → 바로 그 x
+        // 상단 공정이면: 해당 topRow가 mainRows에서 몇 번째인지 → 하단 말단 근처 x 반환
         const ti=topRows.indexOf(mr);
-        if(ti>=0)return{x:tx_(ti),onBot:false};
+        if(ti>=0)return RX-20; // 상단 공정 부모면 오른쪽 끝 근처
       }
     }
-    return{x:bx(Math.min(3,NB-1)),onBot:true}; // fallback: 4공정
+    return bx(Math.min(3,NB-1)); // fallback: 4공정
   }
 
   let t0=null;
@@ -1743,42 +1745,30 @@ function init2D(){
       }
     });
 
-    // ── SUB 공정: 부모 공정 아래, 겹침 방지 ──
-    const subSW=Math.min(BW/Math.max(NB,subRows.length+1)*0.88,90);
+    // ── SUB 공정: 항상 하단 벨트 아래에 표시 ──
+    const subSW=Math.min(BW/Math.max(NB,subRows.length+1)*0.9,92);
+    const SY=BY+TW/2+12;
     const usedSubX=[];
     subRows.forEach(r=>{
-      let {x:sx,onBot}=subParentX(r);
-      // 겹침 방지: 같은 x에 다른 SUB가 있으면 우측으로 밀기
+      let sx=subParentBotX(r);
+      // 겹침 방지
       let tries=0;
-      while(usedSubX.some(ux=>Math.abs(ux-sx)<subSW+4)&&tries<20){sx+=subSW+6;tries++;}
-      // 캔버스 우측 넘침 방지
-      sx=Math.min(sx,RX-subSW/2-4);
+      while(usedSubX.some(ux=>Math.abs(ux-sx)<subSW+6)&&tries<20){sx+=subSW+8;tries++;}
+      sx=Math.min(Math.max(sx,LX+subSW/2+2),RX-subSW/2-2);
       usedSubX.push(sx);
       const ct=r.ct||0;
-      if(onBot){
-        const SY=BY+TW/2+12;
-        ctx.strokeStyle='#7c3aed55';ctx.lineWidth=1;ctx.setLineDash([3,3]);
-        ctx.beginPath();ctx.moveTo(sx,BY+TW/2+1);ctx.lineTo(sx,SY);ctx.stroke();ctx.setLineDash([]);
-        rr(sx-subSW/2,SY,subSW,50,4);
-        ctx.fillStyle='#1a0a2e';ctx.fill();ctx.strokeStyle='#7c3aed';ctx.lineWidth=1.5;ctx.stroke();
-        ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
-        ctx.fillText((r.name||'SUB').slice(0,10),sx,SY+13);
-        const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,10);
-        if(tk){ctx.fillStyle='#7c3aed';ctx.font='7px Malgun Gothic';ctx.fillText(tk,sx,SY+25);}
-        if(ct>0){ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.fillText(ct+'초',sx,SY+38);}
-        drawW(sx,SY+60,'#7c3aed','서브',8);
-      } else {
-        const SY2=TTOP-62;
-        ctx.strokeStyle='#7c3aed55';ctx.lineWidth=1;ctx.setLineDash([3,3]);
-        ctx.beginPath();ctx.moveTo(sx,TTOP-1);ctx.lineTo(sx,SY2+50);ctx.stroke();ctx.setLineDash([]);
-        rr(sx-subSW/2,SY2,subSW,50,4);
-        ctx.fillStyle='#1a0a2e';ctx.fill();ctx.strokeStyle='#7c3aed';ctx.lineWidth=1.5;ctx.stroke();
-        ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
-        ctx.fillText((r.name||'SUB').slice(0,10),sx,SY2+13);
-        const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,10);
-        if(tk){ctx.fillStyle='#7c3aed';ctx.font='7px Malgun Gothic';ctx.fillText(tk,sx,SY2+25);}
-        if(ct>0){ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.fillText(ct+'초',sx,SY2+38);}
-      }
+      // 부모 공정과 연결선
+      ctx.strokeStyle='#7c3aed66';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(sx,BY+TW/2+1);ctx.lineTo(sx,SY);ctx.stroke();ctx.setLineDash([]);
+      // SUB 박스
+      rr(sx-subSW/2,SY,subSW,52,4);
+      ctx.fillStyle='#1a0a2e';ctx.fill();ctx.strokeStyle='#7c3aed';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
+      ctx.fillText((r.name||'SUB').slice(0,10),sx,SY+14);
+      const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,10);
+      if(tk){ctx.fillStyle='#7c3aed';ctx.font='7px Malgun Gothic';ctx.fillText(tk,sx,SY+26);}
+      if(ct>0){ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.fillText(ct+'초',sx,SY+40);}
+      drawW(sx,SY+62,'#7c3aed','서브',8);
     });
 
     // ── 지그: NSLOT개, 각 슬롯별 라벨/크기, 코너에서 180° 회전 ──
