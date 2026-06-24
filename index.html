@@ -342,21 +342,35 @@
         <span class="stat" id="procStat"></span>
       </div>
       <div class="scroll">
-        <table>
+        <table style="table-layout:fixed;width:100%">
+          <colgroup>
+            <col style="width:54px"><!-- 컨베어 -->
+            <col style="width:88px"><!-- 공정명 -->
+            <col style="width:48px"><!-- 그룹 -->
+            <col style="width:220px"><!-- 공정작업 -->
+            <col style="width:40px"><!-- 공백 -->
+            <col style="width:120px"><!-- C/T -->
+            <col style="width:56px"><!-- 인원 -->
+            <col style="width:100px"><!-- 실C/T -->
+            <col style="width:70px"><!-- 여유율 -->
+            <col style="width:100px"><!-- 체결수량 -->
+            <col style="width:160px"><!-- 비고 -->
+            <col style="width:100px"><!-- 삭제 -->
+          </colgroup>
           <thead>
             <tr>
               <th class="rowlab">컨베어</th>
-              <th style="width:88px;position:sticky;left:54px;z-index:3;background:var(--hd2)">공정명</th>
-              <th style="width:52px">그룹</th>
-              <th style="min-width:180px;text-align:left;padding-left:8px">공정작업</th>
-              <th style="width:42px">공백</th>
-              <th style="width:130px">C/T(초)</th>
-              <th style="width:64px">인원</th>
-              <th style="width:110px">실C/T(초)</th>
-              <th style="width:76px">여유율</th>
-              <th style="width:96px;text-align:left;padding-left:6px">체결수량</th>
-              <th style="width:140px;text-align:left;padding-left:6px">비고(관리항목)</th>
-              <th style="width:52px">삭제</th>
+              <th style="position:sticky;left:54px;z-index:3;background:var(--hd2)">공정명</th>
+              <th>그룹</th>
+              <th style="text-align:left;padding-left:8px">공정작업</th>
+              <th>공백</th>
+              <th>C/T(초)</th>
+              <th>인원</th>
+              <th>실C/T(초)</th>
+              <th>여유율</th>
+              <th style="text-align:left;padding-left:6px">체결수량</th>
+              <th style="text-align:left;padding-left:6px">비고(관리항목)</th>
+              <th>삭제</th>
             </tr>
           </thead>
           <tbody id="mainBody"></tbody>
