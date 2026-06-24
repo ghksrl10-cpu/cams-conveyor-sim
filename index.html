@@ -1893,14 +1893,19 @@ function init2D(){
     }
 
     // ── 다공정 작업자: waypoints(SUB 경유) 동기화 ──
+    // 공피치 대차가 오면 작업자는 제자리 대기, 실제 대차에서만 이동
+    const kongPassed=pn>0?Math.floor(advN/(pn+1)):0;
+    const workerAdvN=advN-kongPassed; // 공피치 제외한 실질 진행 횟수
+    const curJigIsKong=pn>0&&(advN%(pn+1))===pn; // 지금 들어오는 지그가 공피치인지
     for(let wi=0;wi<multiWorkers;wi++){
-      const si=(wi+advN)%NWP;
+      const si=(wi+workerAdvN)%NWP;
       const ni=(si+1)%NWP;
       const wpc=waypoints[si],wpn=waypoints[ni];
-      const wx=isTransit?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x;
-      const wy=isTransit?wpc.y+(wpn.y-wpc.y)*easeIO(trP):wpc.y;
+      // 공피치 대차가 들어오는 transit 중이면 작업자는 이동 안 함(대기)
+      const wx=(!curJigIsKong&&isTransit)?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x;
+      const wy=(!curJigIsKong&&isTransit)?wpc.y+(wpn.y-wpc.y)*easeIO(trP):wpc.y;
       const wcolor=`hsl(${20+wi*30},85%,58%)`;
-      drawW(wx,wy,wcolor,`W${wi+1}`,10);
+      drawW(wx,wy,wcolor,curJigIsKong?`W${wi+1}⏸`:`W${wi+1}`,10);
     }
     // 현재 작업 공정 하이라이트 (W1 기준)
     {const si=advN%NWP;const wp=waypoints[si];
