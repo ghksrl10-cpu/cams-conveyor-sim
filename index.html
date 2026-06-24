@@ -1722,14 +1722,16 @@ function init2D(){
       const bx2=LX+i*slotW+1.5;
       const bw2=slotW*span-3;
       const cx=bx2+bw2/2;
-      const dispName=isDaegi?`${procNum}공정`:(r.name||`${procNum}공정`).slice(0,6);
+      // 다공정(isM)이면 이름이 "대기"여도 공정 박스로 표시
+      const showDaegi=isDaegi&&!isM;
+      const dispName=showDaegi?`${procNum}공정`:(r.name&&r.name!=='대기'?r.name:`${procNum}공정`).slice(0,6);
       rr(bx2,BTOP,bw2,BBOXH,3);
-      ctx.fillStyle=isDaegi?'#0f1f33':loadFill(ct);ctx.fill();
-      ctx.strokeStyle=isM?'#f97316':(isDaegi?'#1e3a5f':loadStk(ct));ctx.lineWidth=isM?2:1.5;ctx.stroke();
-      ctx.fillStyle=isM?'#93c5fd':(isDaegi?'#334155':'#e2e8f0');ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillStyle=showDaegi?'#0f1f33':loadFill(ct);ctx.fill();
+      ctx.strokeStyle=isM?'#f97316':(showDaegi?'#1e3a5f':loadStk(ct));ctx.lineWidth=isM?2:1.5;ctx.stroke();
+      ctx.fillStyle=isM?'#93c5fd':(showDaegi?'#475569':'#e2e8f0');ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
       ctx.fillText(dispName,cx,BTOP+11);
-      if(isDaegi){
-        ctx.fillStyle='#1e3a5f';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText('대기',cx,BTOP+22);
+      if(showDaegi){
+        ctx.fillStyle='#334155';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText('대기',cx,BTOP+22);
       } else {
         const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
         if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+22);}
