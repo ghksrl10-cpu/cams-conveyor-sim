@@ -1500,11 +1500,13 @@ function deleteCTSave(){
 /* ─── 2D 컨베어 시뮬레이션 (3라인 전용) ─────────── */
 let _raf2d=null;
 
+function easeIO(t){return t<0.5?2*t*t:-1+(4-2*t)*t;}
+
 function init2D(){
   if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}
   const cv=document.getElementById('cv2d');
   if(!cv)return;
-  const W=cv.parentElement?Math.max(760,cv.parentElement.clientWidth-32):760, H=500;
+  const W=cv.parentElement?Math.max(760,cv.parentElement.clientWidth-32):760, H=530;
   cv.width=W;cv.height=H;
   const ctx=cv.getContext('2d');
 
@@ -1516,26 +1518,31 @@ function init2D(){
   const pitch=wm*60/prod;
   document.getElementById('sim2dPitch').textContent=pitch.toFixed(1);
 
-  // ── 행 분류 ──
+  // ── 행 분류: 모든 비-SUB 행 포함 (taskSpan:0도 각각 스테이션) ──
   const allRows=G().rows;
   const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
-  // taskSpan===0 → 병합그룹의 하위 행(서브행): 스테이션 박스 없이 하나의 스테이션으로 묶임
-  // taskSpan===0 이 아닌 모든 비-SUB 행 = 개별 스테이션 (대기 포함)
-  const mainRows=allRows.filter(r=>!isSUB(r)&&r.taskSpan!==0);
+  const mainRows=allRows.filter(r=>!isSUB(r));
   const subRows=allRows.filter(r=>isSUB(r));
-  // 다공정 그룹: 첫 번째 행의 taskSpan 값으로 스팬 수 파악
-  const firstRow=mainRows[0];
-  const multiSpan=firstRow&&firstRow.taskSpan>1?firstRow.taskSpan:1;
+
+  // 다공정 범위: 연속된 taskSpan>1 + taskSpan:0 그룹 크기
+  let multiSpan=1;
+  if(mainRows.length>0&&mainRows[0].taskSpan>1) multiSpan=mainRows[0].taskSpan;
+  else{ let cnt=0; for(const r of mainRows){if(r.taskSpan===0)cnt++;else break;} multiSpan=1+cnt; }
+
   const half=Math.ceil(mainRows.length/2);
-  const botRows=mainRows.slice(0,half);
-  const topRows=[...mainRows.slice(half)].reverse(); // 상단은 우→좌
+  const botRows=mainRows.slice(0,half);       // 1~N/2 공정 (좌→우)
+  const topRows=mainRows.slice(half);          // N/2+1~N 공정 (우→좌, 역순 없음: [0]=11공정=우측)
   const NB=Math.max(1,botRows.length), NT=Math.max(1,topRows.length);
+  const MN=Math.min(multiSpan,NB);
 
   // ── 레이아웃 ──
-  const PAD=56, TY=88, BY=370;
+  const PAD=50, TY=82, BY=362;
   const LX=PAD, RX=W-PAD;
   const BW=RX-LX, BH=BY-TY;
-  const CR=38, TW=22;
+  const CR=34, TW=20;
+  const BBOXH=54, BPADY=7, TBOXH=52, TPADY=7;
+  const BTOP=BY-TW/2-BBOXH-BPADY;
+  const TTOP=TY+TW/2+TPADY;
   const bx=i=>LX+(i+0.5)*BW/NB;
   const tx_=i=>RX-(i+0.5)*BW/NT;
 
@@ -1543,35 +1550,62 @@ function init2D(){
   const loadFill=ct=>{if(!pitch||!ct)return'#1e293b';const r=ct/pitch*100;return r>100?'#7f1d1d':r>85?'#78350f':'#14532d';};
   const loadStk=ct=>{if(!pitch||!ct)return'#475569';const r=ct/pitch*100;return r>100?'#ef4444':r>85?'#f59e0b':'#22c55e';};
 
-  // ── 지그 ㅁ자 경로 ──
-  // 하단→ : LX~RX y=BY
-  // 우측↑ : RX y=BY~TY
-  // 상단← : RX~LX y=TY
-  // 좌측↓ : LX y=TY~BY
-  const L_BOT=BW, L_RIGHT=BH, L_TOP=BW, L_LEFT=BH;
-  const L_TOTAL=L_BOT+L_RIGHT+L_TOP+L_LEFT;
+  // ── ㅁ 둘레 경로 ──
+  const L_BOT=BW,L_RIGHT=BH,L_TOP=BW,L_LEFT=BH,L_TOTAL=L_BOT+L_RIGHT+L_TOP+L_LEFT;
   function jigXY(frac){
     const p=((frac%1+1)%1)*L_TOTAL;
-    if(p<L_BOT) return{x:LX+p,y:BY,dir:'→'};
+    if(p<L_BOT)return{x:LX+p,y:BY};
     let q=p-L_BOT;
-    if(q<L_RIGHT) return{x:RX,y:BY-q,dir:'↑'};
+    if(q<L_RIGHT)return{x:RX,y:BY-q};
     q-=L_RIGHT;
-    if(q<L_TOP) return{x:RX-q,y:TY,dir:'←'};
-    return{x:LX,y:TY+(p-L_BOT-L_RIGHT-L_TOP),dir:'↓'};
+    if(q<L_TOP)return{x:RX-q,y:TY};
+    return{x:LX,y:TY+(p-L_BOT-L_RIGHT-L_TOP)};
   }
 
-  // ── 타이밍 ──
-  const AP=2.2; // 애니메이션 초/스테이션
-  const beltSpeed=BW/(NB*AP); // px/sec
-  const cycleTime=L_TOTAL/beltSpeed; // full loop 시간
-  // 다공정 작업자: 첫 multiSpan개 하단 스테이션 왕복 (저장된 taskSpan 값 기준)
-  const MN=Math.min(multiSpan,NB);
-  // CT 기반 dwell: 각 스테이션 체류시간 = CT/pitch * AP (없으면 AP)
-  function dwell(r){return r&&pitch>0&&r.ct>0?Math.max(0.4,(r.ct/pitch)*AP):AP;}
-  const dwells=botRows.slice(0,MN).map(r=>dwell(r));
+  // ── 지그 슬롯 (동기화 컨베어): 하단NB + 우코너1 + 상단NT + 좌코너1 ──
+  const NSLOT=NB+NT+2;
+  function slotFrac(s){
+    if(s<NB) return((s+0.5)/NB*L_BOT)/L_TOTAL;
+    if(s===NB) return(L_BOT+L_RIGHT*0.5)/L_TOTAL;
+    if(s<NB+1+NT){const ti=s-NB-1;return(L_BOT+L_RIGHT+(ti+0.5)/NT*L_TOP)/L_TOTAL;}
+    return(L_BOT+L_RIGHT+L_TOP+L_LEFT*0.5)/L_TOTAL;
+  }
+  function slotLabel(s){
+    if(s<NB){const r=botRows[s];return(r&&r.name?r.name:`${s+1}공`).slice(0,5);}
+    if(s===NB||s===NSLOT-1)return'↻';
+    const ti=s-NB-1,r=topRows[ti];
+    return(r&&r.name?r.name:`${half+ti+1}공`).slice(0,5);
+  }
+  function slotJigW(s){
+    if(s<NB)return Math.max(20,BW/NB*0.80);
+    if(s===NB||s===NSLOT-1)return TW*1.3;
+    return Math.max(20,BW/NT*0.80);
+  }
+
+  // ── 피치 기반 애니메이션 타이밍 ──
+  const PANIM=3.0; // 초/스테이션
+  const TR_F=0.18; // transit 비율
+
+  // ── 다공정 작업자 타이밍 ──
+  const AP=PANIM*0.75;
+  const dwells=botRows.slice(0,MN).map(r=>r&&pitch>0&&r.ct>0?Math.max(0.3,(r.ct/pitch)*AP):AP/Math.max(MN,1));
   const fwdTime=dwells.reduce((a,b)=>a+b,0);
-  const retTime=AP*1.2;
+  const retTime=AP*0.35;
   const workerCycle=fwdTime+retTime;
+  function workerPos(wt){
+    let t=wt%workerCycle;
+    if(t<fwdTime){
+      let acc=0;
+      for(let i=0;i<MN;i++){
+        const d=dwells[i];
+        if(t<=acc+d){const fr=(t-acc)/d,x0=bx(i),x1=bx(Math.min(i+1,MN-1));return{x:x0+(x1-x0)*fr,ph:i};}
+        acc+=d;
+      }
+      return{x:bx(MN-1),ph:MN-1};
+    }
+    const rf=(t-fwdTime)/retTime;
+    return{x:bx(MN-1)+(bx(0)-bx(MN-1))*rf,ph:-1};
+  }
 
   // ── 드로우 헬퍼 ──
   function rr(x,y,w,h,r){
@@ -1582,32 +1616,27 @@ function init2D(){
   }
   function drawW(x,y,color,lbl,rad){
     rad=rad||11;
-    const g=ctx.createRadialGradient(x,y,0,x,y,rad+6);
-    g.addColorStop(0,color+'55');g.addColorStop(1,'transparent');
-    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,rad+6,0,Math.PI*2);ctx.fill();
+    const g=ctx.createRadialGradient(x,y,0,x,y,rad+5);
+    g.addColorStop(0,color+'44');g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,rad+5,0,Math.PI*2);ctx.fill();
     ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,rad,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,0.55)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1.5;ctx.stroke();
     ctx.fillStyle='#fff';ctx.font='bold 7px Malgun Gothic';ctx.textAlign='center';ctx.fillText(lbl,x,y+2.5);
   }
 
-  // ── 다공정 작업자 위치 계산 ──
-  function workerPos(wt){
-    let t=wt%workerCycle;
-    if(t<fwdTime){
-      let acc=0;
-      for(let i=0;i<MN;i++){
-        const d=dwells[i];
-        if(t<=acc+d){
-          const frac=(t-acc)/d;
-          const x0=bx(i), x1=bx(Math.min(i+1,MN-1));
-          return{x:x0+(x1-x0)*frac,phase:i};
-        }
-        acc+=d;
+  // ── SUB 부모 공정 위치 계산 (allRows 상 앞 mainRow 기준) ──
+  function subParentX(subR){
+    const si=allRows.indexOf(subR);
+    for(let k=si-1;k>=0;k--){
+      const mr=allRows[k];
+      if(!isSUB(mr)){
+        const bi=botRows.indexOf(mr);
+        if(bi>=0)return{x:bx(bi),onBot:true};
+        const ti=topRows.indexOf(mr);
+        if(ti>=0)return{x:tx_(ti),onBot:false};
       }
-      return{x:bx(MN-1),phase:MN-1};
     }
-    const rf=(t-fwdTime)/retTime;
-    return{x:bx(MN-1)+(bx(0)-bx(MN-1))*rf,phase:-1};
+    return{x:bx(Math.min(3,NB-1)),onBot:true}; // fallback: 4공정
   }
 
   let t0=null;
@@ -1615,6 +1644,10 @@ function init2D(){
     if(!t0)t0=ts;
     const el=(ts-t0)/1000;
     const wt=el%workerCycle;
+    const cycleEl=(el%PANIM)/PANIM;
+    const isTransit=cycleEl>(1-TR_F);
+    const trP=isTransit?(cycleEl-(1-TR_F))/TR_F:0;
+    const advN=Math.floor(el/PANIM);
 
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
@@ -1629,138 +1662,140 @@ function init2D(){
       ctx.lineTo(LX,BY-CR);ctx.arcTo(LX,BY,LX+CR,BY,CR);
       ctx.closePath();ctx.stroke();
     }
-    drawTrack('#1e3a5f',TW+6);
-    drawTrack('#243553',TW);
-    drawTrack('#0f2744aa',TW-8);
+    drawTrack('#1e3a5f',TW+6);drawTrack('#243553',TW);drawTrack('#0f274488',TW-6);
 
-    // 방향 화살표
+    // 방향 표시
     ctx.fillStyle='#1e3a5f99';ctx.font='9px Malgun Gothic';ctx.textAlign='center';
     ctx.fillText('→  →  →  →  →',W/2,BY+7);
-    ctx.fillText('←  ←  ←  ←  ←',W/2,TY-5);
-    // 좌우 이송
-    ['우측 이송↑','좌측 이송↓'].forEach((txt,k)=>{
-      ctx.save();ctx.translate(k===0?RX+18:LX-18,(TY+BY)/2);ctx.rotate(k===0?-Math.PI/2:Math.PI/2);
-      ctx.fillStyle='#0369a1';ctx.font='8px Malgun Gothic';ctx.textAlign='center';ctx.fillText(txt,0,0);ctx.restore();
+    ctx.fillText('←  ←  ←  ←  ←',W/2,TY-4);
+    ['우측↑','좌측↓'].forEach((t,k)=>{
+      ctx.save();ctx.translate(k===0?RX+16:LX-16,(TY+BY)/2);ctx.rotate(k===0?-Math.PI/2:Math.PI/2);
+      ctx.fillStyle='#0369a1';ctx.font='8px Malgun Gothic';ctx.textAlign='center';ctx.fillText(t,0,0);ctx.restore();
     });
-
-    // 스키드 코너 표시
     [{cx:RX},{cx:LX}].forEach(({cx})=>{
-      ctx.strokeStyle='#0284c7';ctx.lineWidth=2;ctx.setLineDash([4,3]);
-      ctx.beginPath();ctx.arc(cx,(TY+BY)/2,22,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+      ctx.strokeStyle='#0284c7';ctx.lineWidth=2;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.arc(cx,(TY+BY)/2,18,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#075985';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
       ctx.fillText('회전',cx,(TY+BY)/2+3);
     });
 
-    // ── 지그들 ㅁ자 순환 ──
-    const NJ=Math.max(NB,6);
-    for(let j=0;j<NJ;j++){
-      const frac=(el/cycleTime+j/NJ)%1;
-      const pos=jigXY(frac);
-      const isH=j===0; // 첫 번째가 하이라이트
-      const jw=isH?38:30, jh=isH?16:12;
-      rr(pos.x-jw/2,pos.y-jh/2,jw,jh,3);
-      ctx.fillStyle=isH?'#1d4ed8':'#1e1b4b';ctx.fill();
-      ctx.strokeStyle=isH?'#60a5fa':'#4338ca';ctx.lineWidth=isH?2:1;ctx.stroke();
-      ctx.fillStyle=isH?'#bfdbfe':'#818cf8';ctx.font=`bold ${isH?8:6}px Malgun Gothic`;ctx.textAlign='center';
-      ctx.fillText(isH?'C/P JIG':'JIG',pos.x,pos.y+2.5);
-    }
-
     // ── 하단 공정 박스 ──
-    const BBOXH=66, BPADY=10;
-    const BTOP=BY-TW/2-BBOXH-BPADY;
-    const fs=NB>12?8:NB>8?9:10;
+    const fs=NB>15?6:NB>11?7:NB>8?8:9;
     botRows.forEach((r,i)=>{
-      const cx=bx(i), bw2=BW/NB-4, bx2=LX+i*BW/NB+2;
-      const ct=r.ct||0, isM=i<MN, w=r.workers||1;
-      rr(bx2,BTOP,bw2,BBOXH,4);
+      const cx=bx(i),bw2=BW/NB-3,bx2=LX+i*BW/NB+1.5;
+      const ct=r.ct||0,isM=i<MN,w=r.workers||1;
+      rr(bx2,BTOP,bw2,BBOXH,3);
       ctx.fillStyle=loadFill(ct);ctx.fill();
       ctx.strokeStyle=isM?'#f97316':loadStk(ct);ctx.lineWidth=isM?2:1.5;ctx.stroke();
-      ctx.fillStyle=isM?'#93c5fd':'#cbd5e1';ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
-      ctx.fillText((r.name||`${i+1}공`).slice(0,6),cx,BTOP+14);
-      const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,7);
-      if(tk){ctx.fillStyle='#64748b';ctx.font=`${fs-1}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+26);}
-      if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+40);}
-      rr(cx-13,BTOP+50,26,12,3);ctx.fillStyle=isM?'rgba(249,115,22,0.2)':'rgba(22,163,74,0.15)';ctx.fill();
-      ctx.fillStyle=isM?'#f97316':'#4ade80';ctx.font='7px Malgun Gothic';
-      ctx.fillText(isM?'다공정':w+'인',cx,BTOP+59);
-      if(!isM&&w>0) drawW(cx,BTOP+BBOXH+14,'#15803d',w+'명',8);
+      ctx.fillStyle=isM?'#93c5fd':'#e2e8f0';ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillText((r.name||`${i+1}공`).slice(0,6),cx,BTOP+11);
+      const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
+      if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+22);}
+      if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+33);}
+      rr(cx-11,BTOP+39,22,11,3);
+      ctx.fillStyle=isM?'rgba(249,115,22,0.18)':'rgba(22,163,74,0.15)';ctx.fill();
+      ctx.fillStyle=isM?'#f97316':'#4ade80';ctx.font='6px Malgun Gothic';
+      ctx.fillText(isM?'다공정':w+'인',cx,BTOP+48);
+      if(!isM&&w>0)drawW(cx,BTOP+BBOXH+13,'#15803d',w+'명',8);
     });
-    // 다공정 그룹 브래킷
     if(MN>0){
-      ctx.strokeStyle='rgba(249,115,22,0.45)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
-      ctx.strokeRect(LX+2,BTOP-8,BW/NB*MN-4,BBOXH+16);ctx.setLineDash([]);
+      ctx.strokeStyle='rgba(249,115,22,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+      ctx.strokeRect(LX+1,BTOP-6,BW/NB*MN-2,BBOXH+12);ctx.setLineDash([]);
       ctx.fillStyle='#f97316';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
-      ctx.fillText(`▼ 다공정 1~${MN}공정 ▼`,LX+BW/NB*MN/2,BTOP-10);
+      ctx.fillText(`▼ 1인 다공정 (1~${MN}공정) ▼`,LX+BW/NB*MN/2,BTOP-8);
     }
 
     // ── 상단 공정 박스 ──
-    const TBOXH=62, TPADY=10;
-    const TTOP=TY+TW/2+TPADY;
-    const fst=NT>12?8:NT>8?9:10;
+    const fst=NT>15?6:NT>11?7:NT>8?8:9;
     topRows.forEach((r,i)=>{
-      const cx=tx_(i), tw2=BW/NT-4, tx2=RX-i*BW/NT-BW/NT+2;
-      const ct=r.ct||0, w=r.workers||1;
-      rr(tx2,TTOP,tw2,TBOXH,4);
+      const cx=tx_(i),tw2=BW/NT-3,tx2=RX-i*BW/NT-BW/NT+1.5;
+      const ct=r.ct||0,w=r.workers||1;
+      rr(tx2,TTOP,tw2,TBOXH,3);
       ctx.fillStyle=loadFill(ct);ctx.fill();
       ctx.strokeStyle=loadStk(ct);ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle='#cbd5e1';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
-      ctx.fillText((r.name||`${half+i+1}공`).slice(0,6),cx,TTOP+14);
-      const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,7);
-      if(tk){ctx.fillStyle='#64748b';ctx.font=`${fst-1}px Malgun Gothic`;ctx.fillText(tk,cx,TTOP+26);}
-      if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fst}px Malgun Gothic`;ctx.fillText(ct+'초',cx,TTOP+40);}
+      ctx.fillStyle='#e2e8f0';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillText((r.name||`${half+i+1}공`).slice(0,6),cx,TTOP+11);
+      const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
+      if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;ctx.fillText(tk,cx,TTOP+22);}
+      if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fst}px Malgun Gothic`;ctx.fillText(ct+'초',cx,TTOP+33);}
       if(w>0){
-        rr(cx-12,TTOP+50,24,10,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
-        ctx.fillStyle='#4ade80';ctx.font='7px Malgun Gothic';ctx.fillText(w+'인',cx,TTOP+58);
-        drawW(cx,TTOP+TBOXH+14,'#15803d','작',8);
+        rr(cx-11,TTOP+39,22,11,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
+        ctx.fillStyle='#4ade80';ctx.font='6px Malgun Gothic';ctx.fillText(w+'인',cx,TTOP+48);
+        drawW(cx,TTOP+TBOXH+13,'#15803d',w+'명',8);
       }
     });
 
-    // ── SUB 공정 (하단 벨트 아래) ──
-    if(subRows.length>0){
-      const SY=BY+TW/2+16;
-      const sp2=BW/(subRows.length+1);
-      subRows.forEach((r,si)=>{
-        const sx=LX+(si+1)*sp2, sw=Math.min(sp2-8,100);
-        ctx.strokeStyle='#7c3aed44';ctx.lineWidth=1;ctx.setLineDash([3,3]);
-        ctx.beginPath();ctx.moveTo(sx,BY+TW/2+2);ctx.lineTo(sx,SY);ctx.stroke();ctx.setLineDash([]);
-        rr(sx-sw/2,SY,sw,48,4);ctx.fillStyle='#1a0a2e';ctx.fill();ctx.strokeStyle='#7c3aed';ctx.lineWidth=1;ctx.stroke();
+    // ── SUB 공정: 부모 공정 바로 아래(하단) / 위(상단) ──
+    subRows.forEach(r=>{
+      const {x:sx,onBot}=subParentX(r);
+      const sw=Math.min(BW/NB*0.85,84);
+      const ct=r.ct||0;
+      if(onBot){
+        const SY=BY+TW/2+10;
+        ctx.strokeStyle='#7c3aed55';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+        ctx.beginPath();ctx.moveTo(sx,BY+TW/2+1);ctx.lineTo(sx,SY);ctx.stroke();ctx.setLineDash([]);
+        rr(sx-sw/2,SY,sw,46,4);ctx.fillStyle='#1a0a2e';ctx.fill();ctx.strokeStyle='#7c3aed';ctx.lineWidth=1.5;ctx.stroke();
         ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
-        ctx.fillText((r.name||'SUB').slice(0,9),sx,SY+14);
+        ctx.fillText((r.name||'SUB').slice(0,9),sx,SY+12);
         const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,9);
-        if(tk){ctx.fillStyle='#6d28d9';ctx.font='7px Malgun Gothic';ctx.fillText(tk,sx,SY+26);}
-        const ct=r.ct||0;
-        if(ct>0){ctx.fillStyle='#a78bfa';ctx.font='bold 7px Malgun Gothic';ctx.fillText(ct+'초',sx,SY+38);}
-        drawW(sx,SY+58,'#7c3aed','서브',8);
-      });
+        if(tk){ctx.fillStyle='#7c3aed';ctx.font='7px Malgun Gothic';ctx.fillText(tk,sx,SY+23);}
+        if(ct>0){ctx.fillStyle='#a78bfa';ctx.font='bold 7px Malgun Gothic';ctx.fillText(ct+'초',sx,SY+35);}
+        drawW(sx,SY+56,'#7c3aed','서브',7);
+      } else {
+        const SY2=TTOP-56;
+        ctx.strokeStyle='#7c3aed55';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+        ctx.beginPath();ctx.moveTo(sx,TTOP-1);ctx.lineTo(sx,SY2+46);ctx.stroke();ctx.setLineDash([]);
+        rr(sx-sw/2,SY2,sw,46,4);ctx.fillStyle='#1a0a2e';ctx.fill();ctx.strokeStyle='#7c3aed';ctx.lineWidth=1.5;ctx.stroke();
+        ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
+        ctx.fillText((r.name||'SUB').slice(0,9),sx,SY2+12);
+        const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,9);
+        if(tk){ctx.fillStyle='#7c3aed';ctx.font='7px Malgun Gothic';ctx.fillText(tk,sx,SY2+23);}
+        if(ct>0){ctx.fillStyle='#a78bfa';ctx.font='bold 7px Malgun Gothic';ctx.fillText(ct+'초',sx,SY2+35);}
+      }
+    });
+
+    // ── 지그: NSLOT개, 각 슬롯별 다른 라벨/크기, 동기화 이동 ──
+    for(let j=0;j<NSLOT;j++){
+      const curS=(j+advN)%NSLOT;
+      const nxtS=(curS+1)%NSLOT;
+      const f0=slotFrac(curS);
+      let f1=slotFrac(nxtS);
+      if(f1<f0)f1+=1; // wrap
+      const frac=isTransit?f0+(f1-f0)*easeIO(trP):f0;
+      const pos=jigXY(frac);
+      const jw=slotJigW(curS);
+      const jh=TW-2;
+      const lbl=slotLabel(curS);
+      const isCorner=curS===NB||curS===NSLOT-1;
+      const jw2=isCorner?TW*1.2:jw, jh2=isCorner?TW*1.2:jh;
+      rr(pos.x-jw2/2,pos.y-jh2/2,jw2,jh2,3);
+      ctx.fillStyle='#1d4ed8';ctx.fill();
+      ctx.strokeStyle='#60a5fa';ctx.lineWidth=isCorner?1:1.5;ctx.stroke();
+      ctx.fillStyle='#bfdbfe';ctx.font=`bold ${isCorner?6:7}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillText(lbl,pos.x,pos.y+2.5);
     }
 
-    // ── 다공정 작업자 (박스 아래) ──
+    // ── 다공정 작업자 (박스 바로 아래) ──
     const wp=workerPos(wt);
-    const wcolor=wp.phase<0?'#475569':'#ea580c';
-    const wlabel=wp.phase<0?'복귀':'작업';
-    drawW(wp.x,BTOP+BBOXH+14,wcolor,wlabel,12);
-
-    // 현재 작업 중인 공정 하이라이트
-    if(wp.phase>=0&&wp.phase<NB){
-      ctx.strokeStyle='rgba(234,88,12,0.6)';ctx.lineWidth=2;ctx.setLineDash([]);
-      const cx=bx(wp.phase),bw2=BW/NB-4,bx2=LX+wp.phase*BW/NB+2;
-      rr(bx2-1,BTOP-1,bw2+2,BBOXH+2,5);ctx.stroke();
+    const wcolor=wp.ph<0?'#475569':'#ea580c';
+    const wlabel=wp.ph<0?'복귀':'작업';
+    drawW(wp.x,BTOP+BBOXH+13,wcolor,wlabel,12);
+    if(wp.ph>=0&&wp.ph<NB){
+      ctx.strokeStyle='rgba(234,88,12,0.55)';ctx.lineWidth=2;
+      const bx2=LX+wp.ph*BW/NB+1.5,bw2=BW/NB-3;
+      rr(bx2-1,BTOP-1,bw2+2,BBOXH+2,4);ctx.stroke();
     }
 
-    // ── 피치 구분선 ──
-    ctx.strokeStyle='rgba(99,102,241,0.2)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-    for(let i=1;i<NB;i++){const x=LX+i*BW/NB;ctx.beginPath();ctx.moveTo(x,BTOP-2);ctx.lineTo(x,BY-1);ctx.stroke();}
-    for(let i=1;i<NT;i++){const x=RX-i*BW/NT;ctx.beginPath();ctx.moveTo(x,TY+1);ctx.lineTo(x,TTOP+TBOXH+2);ctx.stroke();}
+    // 피치 구분선
+    ctx.strokeStyle='rgba(99,102,241,0.18)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
+    for(let i=1;i<NB;i++){const x=LX+i*BW/NB;ctx.beginPath();ctx.moveTo(x,BTOP-1);ctx.lineTo(x,BY-1);ctx.stroke();}
+    for(let i=1;i<NT;i++){const x=RX-i*BW/NT;ctx.beginPath();ctx.moveTo(x,TY+1);ctx.lineTo(x,TTOP+TBOXH+1);ctx.stroke();}
     ctx.setLineDash([]);
 
-    // ── 상태 텍스트 ──
     const stEl=document.getElementById('sim2dStatus');
     if(stEl){
-      if(wp.phase>=0){
-        const r=botRows[wp.phase];
-        const load=r&&pitch>0&&r.ct>0?(r.ct/pitch*100).toFixed(0)+'%':'—';
-        stEl.textContent=`다공정: ${r?r.name:''}공정 작업중 · 부하 ${load}`;
-      } else stEl.textContent='다공정: 1공정으로 복귀중';
+      if(wp.ph>=0){const r=botRows[wp.ph];const ld=r&&pitch>0&&r.ct>0?(r.ct/pitch*100).toFixed(0)+'%':'—';stEl.textContent=`다공정: ${r?r.name:''}공정 작업중 · 부하 ${ld}`;}
+      else stEl.textContent='다공정: 1공정으로 복귀중';
     }
 
     _raf2d=requestAnimationFrame(frame);
