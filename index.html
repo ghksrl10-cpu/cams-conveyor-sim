@@ -1757,6 +1757,7 @@ function init2D(){
     // ── 상단 공정 박스 ──
     const fst=NT>15?7:NT>11?8:NT>8?9:10;
     const topWQ=[]; // 상단 작업자 지연 큐 (지그 이후 그림)
+    const subWQ=[]; // SUB 작업자 지연 큐 (지그 이후 그림)
     topRows.forEach((r,i)=>{
       const cx=tx_(i),tw2=BW/NT-3,tx2=RX-i*BW/NT-BW/NT+1.5;
       const ct=r.ct||0;
@@ -1806,10 +1807,10 @@ function init2D(){
       const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,10);
       if(tk){ctx.fillStyle='#7c3aed';ctx.font='7px Malgun Gothic';ctx.fillText(tk,sx,SY+26);}
       if(ct>0){ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.fillText(ct+'초',sx,SY+40);}
-      drawW(sx,SY+62,'#7c3aed','서브',8);
+      subWQ.push({sx}); // SUB 작업자 지연 큐
     });
 
-    // ── 지그: NSLOT개, 각 슬롯별 라벨/크기, 코너에서 180° 회전 ──
+    // ── 지그: NSLOT개, 공피치비율에 따라 'C/PAD 스키드 지그' / '공피치' 라벨 ──
     for(let j=0;j<NSLOT;j++){
       const curS=(j+advN)%NSLOT;
       const nxtS=(curS+1)%NSLOT;
@@ -1820,24 +1821,27 @@ function init2D(){
       const pos=jigXY(frac);
       const jw=slotJigW(curS);
       const jh=TW-2;
-      const lbl=slotLabel(curS);
       const isCorner=curS===NB||curS===NSLOT-1;
+      // 공피치 지그 판별: pn>0이면 (j%(pn+1))===pn 번째 지그가 공피치
+      const isKong=!isCorner&&pn>0&&(j%(pn+1))===pn;
       const jw2=isCorner?TW*1.4:jw, jh2=isCorner?TW*1.4:jh;
-      // 코너 체류 중: 0→π 회전 (180°)
       const rotA=isCorner&&!isTransit?(Math.PI*cycleEl/(1-TR_F)):isCorner&&isTransit?Math.PI:0;
       ctx.save();
       ctx.translate(pos.x,pos.y);
       ctx.rotate(rotA);
       rr(-jw2/2,-jh2/2,jw2,jh2,3);
-      ctx.fillStyle=isCorner?'#1e3a5f':'#1d4ed8';ctx.fill();
-      ctx.strokeStyle=isCorner?'#0ea5e9':'#60a5fa';ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle=isCorner?'#67e8f9':'#bfdbfe';ctx.font=`bold ${isCorner?6:7}px Malgun Gothic`;ctx.textAlign='center';
-      ctx.fillText(isCorner?'↻':lbl,0,2.5);
+      ctx.fillStyle=isCorner?'#1e3a5f':isKong?'#1e293b':'#1d4ed8';ctx.fill();
+      ctx.strokeStyle=isCorner?'#0ea5e9':isKong?'#475569':'#60a5fa';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle=isCorner?'#67e8f9':isKong?'#64748b':'#bfdbfe';ctx.font=`bold ${isCorner?6:7}px Malgun Gothic`;ctx.textAlign='center';
+      const jlbl=isCorner?'↻':isKong?'공피치':'C/PAD지그';
+      ctx.fillText(jlbl,0,isKong?2.5:0);
+      if(!isCorner&&!isKong){ctx.font='bold 5px Malgun Gothic';ctx.fillText('스키드',0,6);}
       ctx.restore();
     }
 
-    // ── 상단 고정 작업자 (지그 위에 표시) ──
+    // ── 상단·SUB 작업자 (지그 위에 표시) ──
     topWQ.forEach(({cx,w})=>drawW(cx,WY_TOP,'#15803d',w+'명',9));
+    subWQ.forEach(({sx})=>drawW(sx,SY+62,'#7c3aed','서브',8));
 
     // ── 병목 앞 대기(queue) 표시 ──
     if(pitch>0){
