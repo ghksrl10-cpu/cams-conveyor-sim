@@ -1741,7 +1741,7 @@ function init2D(){
       } else {
         const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
         if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+22);}
-        if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+33);}
+        if(ct>0&&!isM){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+33);}
         if(isM){
           rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(249,115,22,0.18)';ctx.fill();
           ctx.fillStyle='#f97316';ctx.font='bold 7px Malgun Gothic';ctx.fillText(multiWorkers+'인',cx,BTOP+48);
@@ -1754,10 +1754,15 @@ function init2D(){
       if(is6)skipBot=true;
     }
     if(MN>0){
+      const grpCT=botRows.slice(0,MN).reduce((s,r)=>s+(r.ct||0),0)
+                 +subRows.reduce((s,r)=>s+(r.ct||0),0);
       ctx.strokeStyle='rgba(249,115,22,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
       ctx.strokeRect(LX+1,BTOP-4,slotW*MN-2,BBOXH+8);ctx.setLineDash([]);
       ctx.fillStyle='#f97316';ctx.font='bold 9px Malgun Gothic';ctx.textAlign='center';
-      ctx.fillText(`▼ ${multiWorkers}인 다공정 (1~${MN}공정) ▼`,LX+slotW*MN/2,BTOP-6);
+      const grpLabel=grpCT>0
+        ?`▼ ${multiWorkers}인 다공정 (1~${MN}공정+SUB) 합계: ${grpCT.toFixed(1)}초 ▼`
+        :`▼ ${multiWorkers}인 다공정 (1~${MN}공정) ▼`;
+      ctx.fillText(grpLabel,LX+slotW*MN/2,BTOP-6);
     }
 
     // ── 상단 공정 박스 ──
