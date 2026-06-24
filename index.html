@@ -1271,7 +1271,9 @@ function saveScenario(){
   let bnCT=0;const pc=active.map(r=>{const sp=(r.taskSpan||1);const ep=pitch*sp;const rt=(sp>1)?r.ct:r.ct/(r.parallel||1)/(r.workers||1);if(rt>bnCT)bnCT=rt;return rt;});
   const uph=bnCT>0?Math.round(3600/bnCT):0,daily=bnCT>0?Math.floor(wm*60/bnCT):0;
   const lb=active.length>0?pc.reduce((a,v)=>a+v,0)/(bnCT*active.length)*100:0;
-  scenarios.push({id:Date.now(),name,lbl,ratio:n+':1',base,pitch:pitch.toFixed(1),cnt:active.length,uph,daily,lb:lb.toFixed(1),bnCT:bnCT.toFixed(1),at:new Date().toLocaleString('ko')});
+  // 공정별 C/T 스냅샷 (3라인만)
+  const rowsSnap=(curLine===2&&curSub===0)?JSON.parse(JSON.stringify(s.rows)):null;
+  scenarios.push({id:Date.now(),name,lbl,ratio:n+':1',base,pitch:pitch.toFixed(1),cnt:active.length,uph,daily,lb:lb.toFixed(1),bnCT:bnCT.toFixed(1),at:new Date().toLocaleString('ko'),rows:rowsSnap,line:curLine,sub:curSub});
   localStorage.setItem('conv_scen4',JSON.stringify(scenarios));
   document.getElementById('saveNote').innerHTML='<b>저장됨</b> · '+name;
 }
@@ -1289,7 +1291,10 @@ function renderScen(){
       <td class="${s.uph===mU?'best':''}">${s.uph}</td><td>${s.bnCT}초</td>
       <td class="${s.daily===mD?'best':''}">${s.daily.toLocaleString()}</td>
       <td class="${+s.lb===mL?'best':''}">${s.lb}%</td>
-      <td style="text-align:center"><button class="btn sml warn" onclick="delScen(${s.id})">삭제</button></td>
+      <td style="text-align:center;white-space:nowrap">
+        ${s.rows?`<button class="btn sml" style="background:#1e3a5f;color:#60a5fa;margin-right:4px" onclick="apply2DScen(${s.id})">📺 2D</button>`:''}
+        <button class="btn sml warn" onclick="delScen(${s.id})">삭제</button>
+      </td>
     </tr>`;
   });
   html+=`</tbody></table>`;
@@ -1297,6 +1302,14 @@ function renderScen(){
 }
 function delScen(id){scenarios=scenarios.filter(s=>s.id!==id);localStorage.setItem('conv_scen4',JSON.stringify(scenarios));renderScen();}
 function clearScen(){if(!confirm('모두 삭제?'))return;scenarios=[];localStorage.setItem('conv_scen4','[]');renderScen();}
+function apply2DScen(id){
+  const sc=scenarios.find(s=>s.id===id);
+  if(!sc||!sc.rows)return;
+  state[sc.line||2][sc.sub||0].rows=JSON.parse(JSON.stringify(sc.rows));
+  localStorage.setItem('conv_struct_'+(sc.line||2)+'_'+(sc.sub||0),JSON.stringify(sc.rows));
+  curLine=sc.line||2;curSub=sc.sub||0;
+  goto2D();
+}
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -1695,24 +1708,39 @@ function init2D(){
 
     // ── 하단 공정 박스 ──
     const fs=NB>15?7:NB>11?8:NB>8?9:10;
+    const DH=22; // 대기 박스 높이
     botRows.forEach((r,i)=>{
       const cx=bx(i),bw2=BW/NB-3,bx2=LX+i*BW/NB+1.5;
       const ct=r.ct||0,isM=i<MN,w=r.workers||0;
-      rr(bx2,BTOP,bw2,BBOXH,3);
-      ctx.fillStyle=loadFill(ct);ctx.fill();
-      ctx.strokeStyle=isM?'#f97316':loadStk(ct);ctx.lineWidth=isM?2:1.5;ctx.stroke();
-      ctx.fillStyle=isM?'#93c5fd':'#e2e8f0';ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
-      ctx.fillText((r.name||`${i+1}공`).slice(0,6),cx,BTOP+11);
-      const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
-      if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+22);}
-      if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+33);}
-      if(isM){
-        rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(249,115,22,0.18)';ctx.fill();
-        ctx.fillStyle='#f97316';ctx.font='bold 7px Malgun Gothic';ctx.fillText(multiWorkers+'인',cx,BTOP+48);
-      } else if(w>0){
-        rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
-        ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,BTOP+48);
-        drawW(cx,WY_BOT,'#15803d',w+'명',9);
+      const isDaegi=r.empty||r.name==='대기'||(r.name===''&&!r.task&&!ct);
+      const procNum=i+1;
+      if(isDaegi){
+        // 대기: 하단에 붙인 얇은 박스
+        const dy=BTOP+BBOXH-DH;
+        rr(bx2,dy,bw2,DH,3);
+        ctx.fillStyle='#0f1f33';ctx.fill();
+        ctx.strokeStyle='#1e3a5f';ctx.lineWidth=1;ctx.stroke();
+        ctx.fillStyle='#334155';ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
+        ctx.fillText(`${procNum}공정`,cx,dy+9);
+        ctx.fillStyle='#1e3a5f';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;
+        ctx.fillText('대기',cx,dy+18);
+      } else {
+        rr(bx2,BTOP,bw2,BBOXH,3);
+        ctx.fillStyle=loadFill(ct);ctx.fill();
+        ctx.strokeStyle=isM?'#f97316':loadStk(ct);ctx.lineWidth=isM?2:1.5;ctx.stroke();
+        ctx.fillStyle=isM?'#93c5fd':'#e2e8f0';ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
+        ctx.fillText((r.name||`${procNum}공`).slice(0,6),cx,BTOP+11);
+        const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
+        if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+22);}
+        if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+33);}
+        if(isM){
+          rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(249,115,22,0.18)';ctx.fill();
+          ctx.fillStyle='#f97316';ctx.font='bold 7px Malgun Gothic';ctx.fillText(multiWorkers+'인',cx,BTOP+48);
+        } else if(w>0){
+          rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
+          ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,BTOP+48);
+          drawW(cx,WY_BOT,'#15803d',w+'명',9);
+        }
       }
     });
     if(MN>0){
@@ -1727,19 +1755,33 @@ function init2D(){
     topRows.forEach((r,i)=>{
       const cx=tx_(i),tw2=BW/NT-3,tx2=RX-i*BW/NT-BW/NT+1.5;
       const ct=r.ct||0;
-      rr(tx2,TTOP,tw2,TBOXH,3);
-      ctx.fillStyle=loadFill(ct);ctx.fill();
-      ctx.strokeStyle=loadStk(ct);ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle='#e2e8f0';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
-      ctx.fillText((r.name||`${half+i+1}공`).slice(0,6),cx,TTOP+11);
-      const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
-      if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;ctx.fillText(tk,cx,TTOP+22);}
-      if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fst}px Malgun Gothic`;ctx.fillText(ct+'초',cx,TTOP+33);}
-      const w=r.workers||0;
-      if(w>0){
-        rr(cx-11,TTOP+42,22,12,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
-        ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,TTOP+52);
-        drawW(cx,WY_TOP,'#15803d',w+'명',9);
+      const isDaegiT=r.empty||r.name==='대기'||(r.name===''&&!r.task&&!ct);
+      const procNumT=half+i+1;
+      if(isDaegiT){
+        // 대기: 상단에 붙인 얇은 박스
+        const dy2=TTOP;
+        rr(tx2,dy2,tw2,DH,3);
+        ctx.fillStyle='#0f1f33';ctx.fill();
+        ctx.strokeStyle='#1e3a5f';ctx.lineWidth=1;ctx.stroke();
+        ctx.fillStyle='#334155';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
+        ctx.fillText(`${procNumT}공정`,cx,dy2+9);
+        ctx.fillStyle='#1e3a5f';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;
+        ctx.fillText('대기',cx,dy2+18);
+      } else {
+        rr(tx2,TTOP,tw2,TBOXH,3);
+        ctx.fillStyle=loadFill(ct);ctx.fill();
+        ctx.strokeStyle=loadStk(ct);ctx.lineWidth=1.5;ctx.stroke();
+        ctx.fillStyle='#e2e8f0';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
+        ctx.fillText((r.name||`${procNumT}공`).slice(0,6),cx,TTOP+11);
+        const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
+        if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;ctx.fillText(tk,cx,TTOP+22);}
+        if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fst}px Malgun Gothic`;ctx.fillText(ct+'초',cx,TTOP+33);}
+        const w=r.workers||0;
+        if(w>0){
+          rr(cx-11,TTOP+42,22,12,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
+          ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,TTOP+52);
+          drawW(cx,WY_TOP,'#15803d',w+'명',9);
+        }
       }
     });
 
