@@ -348,11 +348,11 @@
               <th class="rowlab">컨베어</th>
               <th style="width:88px;position:sticky;left:54px;z-index:3;background:var(--hd2)">공정명</th>
               <th style="width:52px">그룹</th>
-              <th style="min-width:200px;text-align:left;padding-left:8px">공정작업</th>
+              <th style="width:110px;min-width:80px;text-align:left;padding-left:8px">공정작업</th>
               <th style="width:42px">공백</th>
-              <th style="width:88px">C/T(초)</th>
+              <th style="width:130px">C/T(초)</th>
               <th style="width:64px">인원</th>
-              <th style="width:86px">실C/T(초)</th>
+              <th style="width:110px">실C/T(초)</th>
               <th style="width:76px">여유율</th>
               <th style="width:96px;text-align:left;padding-left:6px">체결수량</th>
               <th style="min-width:110px;text-align:left;padding-left:6px">비고(관리항목)</th>
@@ -529,6 +529,7 @@ function showView(v){
     el.classList.remove('active');
     if(el.textContent.trim()===map[v])el.classList.add('active');
   });
+  document.getElementById('floatSave').style.display=v==='sim'?'block':'none';
   if(v==='main')renderMain();
   if(v==='scen')renderScen();
   if(v==='2d')init2D();
@@ -537,7 +538,7 @@ function showView(v){
 function gotoSim(li){
   curLine=li;curSub=0;
   showView('sim');
-  buildStabs();render();loadLineData();
+  buildStabs();loadLineData();
   document.getElementById('simTitle').textContent=LINE_DEF[li].name+' — '+LINE_DEF[li].subs[0];
   document.querySelectorAll('[id^=nl]').forEach((el,i)=>el.classList.toggle('active',i===li));
   // 3라인일 때만 2D 시뮬레이션 메뉴 표시
@@ -586,7 +587,7 @@ function buildStabs(){
   LINE_DEF[curLine].subs.forEach((s,i)=>{
     const el=document.createElement('div');
     el.className='stab'+(i===curSub?' active':'');
-    el.textContent=s;el.onclick=()=>{curSub=i;buildStabs();render();loadLineData();document.getElementById('simTitle').textContent=LINE_DEF[curLine].name+' — '+s;};
+    el.textContent=s;el.onclick=()=>{curSub=i;buildStabs();loadLineData();document.getElementById('simTitle').textContent=LINE_DEF[curLine].name+' — '+s;};
     w.appendChild(el);
   });
 }
@@ -662,7 +663,7 @@ function render(){
       <td class="${emC}"><input value="${esc(r.group||'')}" oninput="upd(${i},'group',this.value)" placeholder="—" style="text-align:center;font-weight:700;color:var(--warn)"></td>
       ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea rows="${span>1?4:2}" style="width:100%;background:transparent;border:none;color:inherit;font:inherit;resize:vertical;padding:2px 4px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
       <td style="background:${r.empty?'#1a1040':'var(--hd2)'};text-align:center"><input type="checkbox" ${r.empty?'checked':''} onchange="toggleEmpty(${i},this.checked)"></td>
-      ${r.ctSpan===0?'':`<td class="${r.empty?'off':ctCls}" ${(r.ctSpan||1)>1?`rowspan="${r.ctSpan}" style="vertical-align:middle;padding:2px 4px"`:'style="padding:2px 4px"'}><div style="display:flex;align-items:center;gap:3px"><input type="number" value="${r.ct||''}" min="0" step="0.1" onchange="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0" style="flex:1;min-width:50px"><button class="btn sml" onclick="openCTCalc(${i})" style="padding:3px 6px;font-size:12px;flex-shrink:0" ${r.empty?'disabled':''}>🧮</button></div></td>`}
+      ${r.ctSpan===0?'':`<td class="${r.empty?'off':ctCls}" ${(r.ctSpan||1)>1?`rowspan="${r.ctSpan}" style="vertical-align:middle;padding:2px 4px"`:'style="padding:2px 4px"'}><div style="display:flex;align-items:center;gap:2px"><input type="number" value="${r.ct||''}" min="0" step="0.1" onchange="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0" style="flex:1;width:0;min-width:0;text-align:right;font-size:13px"><button class="btn" onclick="openCTCalc(${i})" style="padding:2px 4px;font-size:14px;line-height:1;flex-shrink:0;background:transparent;border-color:#334155" ${r.empty?'disabled':''}>🧮</button></div></td>`}
       ${r.workerSpan===0?'':`<td class="${offC}" ${(r.workerSpan||1)>1?`rowspan="${r.workerSpan}" style="vertical-align:middle;text-align:center"`:''}><input type="number" value="${r.workers}" min="0" onchange="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>`}
       ${r.taskSpan===0?'':`<td class="val ${r.empty?'off':ctCls}" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${r.empty?'var(--mut)':''}"`:''}>${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>`}
       ${r.taskSpan===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
@@ -681,9 +682,10 @@ function render(){
     tbody.appendChild(tr);
   });
 }
-function upd(i,k,v){G().rows[i][k]=v;}
+function upd(i,k,v){G().rows[i][k]=v;saveRowStructure();}
 function updNum(i,k,v){
   G().rows[i][k]=v!=null?v:0;
+  saveRowStructure();
   render();
   if(k==='ct'||k==='fNut'||k==='fScrew'||k==='fShex'||k==='fBhex') autoSaveCT();
 }
@@ -776,20 +778,53 @@ function loadWorkers(){
     if(row){row.workers=d.workers!=null?+d.workers:1;if(d.empty!==undefined)row.empty=d.empty;if(d.fNut!=null)row.fNut=+d.fNut;if(d.fScrew!=null)row.fScrew=+d.fScrew;if(d.fShex!=null)row.fShex=+d.fShex;if(d.fBhex!=null)row.fBhex=+d.fBhex;}
   });
 }
+function saveRowStructure(){
+  const key='conv_struct_'+curLine+'_'+curSub;
+  localStorage.setItem(key,JSON.stringify(G().rows));
+}
+function saveAllRows(){
+  // 행 구조 + CT + 인원 한번에 저장
+  const key='conv_struct_'+curLine+'_'+curSub;
+  localStorage.setItem(key,JSON.stringify(G().rows));
+  saveCTData();
+  saveWorkers();
+  const el=document.getElementById('lineSaveNote');
+  el.innerHTML='<span style="color:#a78bfa;font-weight:700">✅ 행 구조 저장 완료 '+new Date().toLocaleTimeString('ko')+'</span>';
+  setTimeout(()=>el.textContent='',3000);
+}
+function loadRowStructure(){
+  const key='conv_struct_'+curLine+'_'+curSub;
+  const raw=localStorage.getItem(key);
+  if(!raw)return false;
+  try{
+    const saved=JSON.parse(raw);
+    if(Array.isArray(saved)&&saved.length>0){
+      state[curLine][curSub].rows=saved;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
 function loadLineData(){
-  loadCTData();
-  loadWorkers();
+  const hasStruct=loadRowStructure();
+  if(!hasStruct){loadCTData();loadWorkers();}
+  else{
+    // 구조에 CT/인원이 모두 포함됨 — bar(상단 입력값)만 따로 복원
+    const wkey='conv_workers_'+curLine+'_'+curSub;
+    const wraw=localStorage.getItem(wkey);
+    if(wraw){try{const w=JSON.parse(wraw);if(w.bar){const b=w.bar;if(b.workMin)document.getElementById('workMin').value=b.workMin;if(b.baseProd)document.getElementById('baseProd').value=b.baseProd;if(b.pitchRatio!==undefined)document.getElementById('pitchRatio').value=b.pitchRatio;if(b.targetUPH)document.getElementById('targetUPH').value=b.targetUPH;if(b.totalWorkers)document.getElementById('totalWorkers').value=b.totalWorkers;calcPitch();}}catch(e){}}
+  }
   render();
 }
 function saveLineData(){saveCTData();}
-function toggleEmpty(i,v){G().rows[i].empty=v;render();}
-function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});render();}
-function insertRow(i){const s=G();s.rows.splice(i,0,{conv:0,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});s.rows.forEach((r,idx)=>r.conv=idx+1);render();}
+function toggleEmpty(i,v){G().rows[i].empty=v;saveRowStructure();render();}
+function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});saveRowStructure();render();}
+function insertRow(i){const s=G();s.rows.splice(i,0,{conv:0,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});s.rows.forEach((r,idx)=>r.conv=idx+1);saveRowStructure();render();}
 let _delUndo=null;
 function delRow(i){
   if(!confirm('삭제하시겠습니까?'))return;
   _delUndo={row:JSON.parse(JSON.stringify(G().rows[i])),idx:i};
-  G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);render();
+  G().rows.splice(i,1);G().rows.forEach((r,j)=>r.conv=j+1);saveRowStructure();render();
   const n=document.getElementById('lineSaveNote');
   n.innerHTML='<span style="color:#f97316">삭제됨 — <button class="btn sml" onclick="undoDelRow()" style="padding:2px 8px">↩ 되돌리기</button></span>';
   setTimeout(()=>{if(n.innerHTML.includes('되돌리기'))n.textContent='';},10000);
@@ -798,7 +833,7 @@ function undoDelRow(){
   if(!_delUndo)return;
   G().rows.splice(_delUndo.idx,0,_delUndo.row);
   G().rows.forEach((r,j)=>r.conv=j+1);
-  _delUndo=null;render();
+  _delUndo=null;saveRowStructure();render();
   document.getElementById('lineSaveNote').textContent='복구 완료';
   setTimeout(()=>document.getElementById('lineSaveNote').textContent='',2000);
 }
@@ -2006,6 +2041,9 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
       <button class="btn sml warn" onclick="closeDist()">취소</button>
     </div>
   </div>
+</div>
+<div id="floatSave" style="display:none;position:fixed;bottom:24px;right:24px;z-index:9999">
+  <button onclick="saveAllRows()" style="background:#7c3aed;border:2px solid #a855f7;color:#fff;font-weight:700;font-size:15px;padding:12px 22px;border-radius:12px;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,237,0.6)">💾 행 저장</button>
 </div>
 </body>
 </html>
