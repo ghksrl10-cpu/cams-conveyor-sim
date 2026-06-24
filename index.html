@@ -1828,15 +1828,19 @@ function init2D(){
       }
     }
 
-    // ── 다공정 작업자 (박스 바로 아래) ──
-    const wp=workerPos(wt);
-    const wcolor=wp.ph<0?'#475569':'#ea580c';
-    const wlabel=wp.ph<0?'복귀':'작업';
-    drawW(wp.x,WY_BOT,wcolor,wlabel,12);
-    if(wp.ph>=0&&wp.ph<NB){
-      ctx.strokeStyle='rgba(234,88,12,0.55)';ctx.lineWidth=2;
-      const bx2=LX+wp.ph*BW/NB+1.5,bw2=BW/NB-3;
-      rr(bx2-1,BTOP-1,bw2+2,BBOXH+2,4);ctx.stroke();
+    // ── 다공정 작업자 (multiWorkers명, 각각 오프셋 간격으로 순환) ──
+    for(let wi=0;wi<multiWorkers;wi++){
+      const offset=(wi/multiWorkers)*workerCycle;
+      const wp=workerPos((wt+offset)%workerCycle);
+      const isRet=wp.ph<0;
+      const hue=wi*(360/multiWorkers);
+      const wcolor=isRet?'#475569':`hsl(${20+hue*0.15},90%,55%)`;
+      drawW(wp.x,WY_BOT-(wi%2)*14,wcolor,`W${wi+1}`,wi===0?12:10);
+      if(!isRet&&wp.ph>=0&&wp.ph<NB&&wi===0){
+        ctx.strokeStyle='rgba(234,88,12,0.45)';ctx.lineWidth=2;
+        const bx2=LX+wp.ph*BW/NB+1.5,bw2=BW/NB-3;
+        rr(bx2-1,BTOP-1,bw2+2,BBOXH+2,4);ctx.stroke();
+      }
     }
 
     // 피치 구분선
