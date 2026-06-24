@@ -1549,8 +1549,8 @@ function init2D(){
   const BBOXH=60, BPADY=8, TBOXH=58, TPADY=8;
   const BTOP=BY-TW/2-BBOXH-BPADY;
   const TTOP=TY+TW/2+TPADY;
-  const WY_BOT=BTOP-16;  // 하단 작업자 Y (박스 위)
-  const WY_TOP=TTOP+TBOXH+16; // 상단 작업자 Y (박스 아래, 루프 안쪽)
+  const WY_BOT=BTOP-16;  // 하단 작업자 Y (박스 위, 루프 안쪽)
+  const WY_TOP=TTOP-16;  // 상단 작업자 Y (박스 위, 벨트 바깥쪽)
   const bx=i=>LX+(i+0.5)*BW/NB;
   const tx_=i=>RX-(i+0.5)*BW/NT;
 
@@ -1697,7 +1697,7 @@ function init2D(){
     const fs=NB>15?7:NB>11?8:NB>8?9:10;
     botRows.forEach((r,i)=>{
       const cx=bx(i),bw2=BW/NB-3,bx2=LX+i*BW/NB+1.5;
-      const ct=r.ct||0,isM=i<MN,w=r.workers||1;
+      const ct=r.ct||0,isM=i<MN,w=r.workers||0;
       rr(bx2,BTOP,bw2,BBOXH,3);
       ctx.fillStyle=loadFill(ct);ctx.fill();
       ctx.strokeStyle=isM?'#f97316':loadStk(ct);ctx.lineWidth=isM?2:1.5;ctx.stroke();
@@ -1706,11 +1706,14 @@ function init2D(){
       const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
       if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+22);}
       if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+33);}
-      rr(cx-11,BTOP+39,22,11,3);
-      ctx.fillStyle=isM?'rgba(249,115,22,0.18)':'rgba(22,163,74,0.15)';ctx.fill();
-      ctx.fillStyle=isM?'#f97316':'#4ade80';ctx.font='6px Malgun Gothic';
-      ctx.fillText(isM?multiWorkers+'인':w+'인',cx,BTOP+48);
-      if(!isM&&w>0)drawW(cx,WY_BOT,'#15803d',w+'명',9);
+      if(isM){
+        rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(249,115,22,0.18)';ctx.fill();
+        ctx.fillStyle='#f97316';ctx.font='bold 7px Malgun Gothic';ctx.fillText(multiWorkers+'인',cx,BTOP+48);
+      } else if(w>0){
+        rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
+        ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,BTOP+48);
+        drawW(cx,WY_BOT,'#15803d',w+'명',9);
+      }
     });
     if(MN>0){
       ctx.strokeStyle='rgba(249,115,22,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
@@ -1732,9 +1735,10 @@ function init2D(){
       const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
       if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;ctx.fillText(tk,cx,TTOP+22);}
       if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fst}px Malgun Gothic`;ctx.fillText(ct+'초',cx,TTOP+33);}
+      const w=r.workers||0;
       if(w>0){
         rr(cx-11,TTOP+42,22,12,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
-        ctx.fillStyle='#4ade80';ctx.font='bold 8px Malgun Gothic';ctx.fillText(w+'인',cx,TTOP+52);
+        ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,TTOP+52);
         drawW(cx,WY_TOP,'#15803d',w+'명',9);
       }
     });
