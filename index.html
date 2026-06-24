@@ -189,6 +189,8 @@
     .kpi-row{grid-template-columns:repeat(2,1fr)}
   }
 </style>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="scrim" id="scrim" onclick="toggleNav(false)"></div>
@@ -227,6 +229,9 @@
   <div class="side-foot">
     <div class="av">김</div>
     <div><b style="font-size:14px">김환기</b><small>캠스 담당자</small></div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b">
+      <span id="syncDot" title="동기화 대기중" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#64748b;transition:background .4s"></span>☁
+    </div>
   </div>
 </aside>
 
@@ -481,6 +486,78 @@
 </div>
 
 <script>
+/* ─── Firebase 자동 동기화 ─────────────────────── */
+(function(){
+  const FB_CFG={
+    apiKey:"AIzaSyDZZSI3ib_rmGz4gSMe0DgZs650IuTCvKs",
+    authDomain:"cams-torque.firebaseapp.com",
+    projectId:"cams-torque",
+    storageBucket:"cams-torque.firebasestorage.app",
+    messagingSenderId:"404254094434",
+    appId:"1:404254094434:web:b4193a15de4153b9aa0d3b"
+  };
+  const SYNC_KEYS=['conv_struct_2_0','conv_scenarios'];
+  // 추가 conv_struct 키 동적 수집 포함
+  function allSyncKeys(){
+    const keys=new Set(SYNC_KEYS);
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('conv_struct'))keys.add(k);}
+    return [...keys];
+  }
+
+  let db=null;
+  let _pushing=false; // 무한루프 방지
+
+  function initFB(){
+    try{
+      if(!firebase.apps.length)firebase.initializeApp(FB_CFG);
+      db=firebase.firestore();
+      // 시작 시 클라우드→로컬 동기화 (최신 데이터 받아오기)
+      db.collection('conveyor_sim').doc('config').get().then(snap=>{
+        if(!snap.exists)return;
+        const data=snap.data()||{};
+        let changed=false;
+        Object.entries(data).forEach(([k,v])=>{
+          if(v!==null&&v!==undefined){localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));changed=true;}
+        });
+        if(changed&&typeof loadLineData==='function'){loadLineData();if(typeof renderScenarios==='function')renderScenarios();}
+        document.getElementById('syncDot').style.background='#22c55e';
+        document.getElementById('syncDot').title='클라우드 동기화 완료';
+      }).catch(()=>{document.getElementById('syncDot').style.background='#f59e0b';});
+
+      // 실시간 변경 감지 (다른 PC에서 수정 시 자동 반영)
+      db.collection('conveyor_sim').doc('config').onSnapshot(snap=>{
+        if(_pushing||!snap.exists)return;
+        const data=snap.data()||{};
+        let changed=false;
+        Object.entries(data).forEach(([k,v])=>{
+          const cur=localStorage.getItem(k);
+          const nv=typeof v==='string'?v:JSON.stringify(v);
+          if(nv!==cur){localStorage.setItem(k,nv);changed=true;}
+        });
+        if(changed&&typeof loadLineData==='function'){loadLineData();if(typeof renderScenarios==='function')renderScenarios();}
+      });
+    }catch(e){console.warn('Firebase init 실패',e);}
+  }
+
+  // localStorage 변경 시 클라우드 업로드
+  window._simPushCloud=function(){
+    if(!db||_pushing)return;
+    _pushing=true;
+    const payload={};
+    allSyncKeys().forEach(k=>{const v=localStorage.getItem(k);if(v)payload[k]=v;});
+    db.collection('conveyor_sim').doc('config').set(payload,{merge:true})
+      .then(()=>{
+        document.getElementById('syncDot').style.background='#22c55e';
+        document.getElementById('syncDot').title='저장 완료 ☁';
+      })
+      .catch(()=>{document.getElementById('syncDot').style.background='#ef4444';})
+      .finally(()=>{_pushing=false;});
+  };
+
+  // 페이지 로드 후 Firebase 초기화
+  window.addEventListener('load',()=>{if(typeof firebase!=='undefined')initFB();});
+})();
+
 /* ─── 라인 구조 ───────────────────────────────── */
 const LINE_DEF=[
   {name:'조립 1라인',subs:['FRT','RR']},
@@ -839,6 +916,7 @@ function loadWorkers(){
 function saveRowStructure(){
   const key='conv_struct_'+curLine+'_'+curSub;
   localStorage.setItem(key,JSON.stringify(G().rows));
+  if(typeof _simPushCloud==='function')_simPushCloud();
 }
 function saveAllRows(){
   // 행 구조 + CT + 인원 한번에 저장
@@ -846,6 +924,7 @@ function saveAllRows(){
   localStorage.setItem(key,JSON.stringify(G().rows));
   saveCTData();
   saveWorkers();
+  if(typeof _simPushCloud==='function')_simPushCloud();
   const el=document.getElementById('lineSaveNote');
   el.innerHTML='<span style="color:#a78bfa;font-weight:700">✅ 행 구조 저장 완료 '+new Date().toLocaleTimeString('ko')+'</span>';
   setTimeout(()=>el.textContent='',3000);
@@ -1311,6 +1390,7 @@ function saveScenario(){
   const rowsSnap=(curLine===2&&curSub===0)?JSON.parse(JSON.stringify(s.rows)):null;
   scenarios.push({id:Date.now(),name,lbl,ratio:n+':1',base,pitch:pitch.toFixed(1),cnt:active.length,uph,daily,lb:lb.toFixed(1),bnCT:bnCT.toFixed(1),at:new Date().toLocaleString('ko'),rows:rowsSnap,line:curLine,sub:curSub});
   localStorage.setItem('conv_scen4',JSON.stringify(scenarios));
+  if(typeof _simPushCloud==='function')_simPushCloud();
   document.getElementById('saveNote').innerHTML='<b>저장됨</b> · '+name;
 }
 function renderScen(){
