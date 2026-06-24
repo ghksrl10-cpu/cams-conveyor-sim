@@ -1612,22 +1612,41 @@ function init2D(){
     ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(rad,8)}px Malgun Gothic`;ctx.textAlign='center';ctx.fillText(lbl,x,y+2.5);
   }
 
-  // ── SUB 부모 공정 위치 계산 (항상 하단 벨트 아래에 표시) ──
+  // ── SUB 부모 공정 위치 계산 ──
   function subParentBotX(subR){
+    // 에어백 SUB: 4공정(141)과 5공정(142) 사이 고정
+    if((subR.name||'').includes('에어백')||(subR.task||'').includes('에어백')){
+      const i4=botRows.findIndex(r=>/^4공정$|^141$/.test(r.name||''));
+      const i5=botRows.findIndex(r=>/^5공정$|^142$/.test(r.name||''));
+      if(i4>=0&&i5>i4)return(bx(i4)+bx(i5))/2;
+      if(i4>=0)return(bx(i4)+bx(Math.min(i4+1,NB-1)))/2;
+      if(NB>4)return(bx(3)+bx(4))/2;
+      return bx(Math.min(3,NB-1));
+    }
     const si=allRows.indexOf(subR);
-    // 1) allRows에서 이 SUB 바로 앞 mainRow 찾기
     for(let k=si-1;k>=0;k--){
       const mr=allRows[k];
       if(!isSUB(mr)){
         const bi=botRows.indexOf(mr);
-        if(bi>=0)return bx(bi); // 하단 공정 → 바로 그 x
-        // 상단 공정이면: 해당 topRow가 mainRows에서 몇 번째인지 → 하단 말단 근처 x 반환
-        const ti=topRows.indexOf(mr);
-        if(ti>=0)return RX-20; // 상단 공정 부모면 오른쪽 끝 근처
+        if(bi>=0)return bx(bi);
       }
     }
-    return bx(Math.min(3,NB-1)); // fallback: 4공정
+    return bx(Math.min(3,NB-1));
   }
+
+  // ── 작업자 경로 (SUB 에어백 경유) ──
+  const SY_W=BY+TW/2+12+28; // SUB 박스 내 작업자 Y
+  const subAirX=subRows.length>0?subParentBotX(subRows[0]):null;
+  const waypoints=[];
+  for(let i=0;i<MN;i++){
+    waypoints.push({x:bx(i),y:WY_BOT,bIdx:i,isSub:false});
+    // 4공정(index 3) 완료 후 SUB 에어백 경유
+    const isIdx4=botRows[i]&&/^4공정$|^141$/.test(botRows[i].name||'');
+    const isFallback4=!botRows.some(r=>/^4공정$|^141$/.test(r.name||''))&&i===Math.min(3,MN-1);
+    if((isIdx4||isFallback4)&&subAirX!==null)
+      waypoints.push({x:subAirX,y:SY_W,bIdx:-1,isSub:true});
+  }
+  const NWP=waypoints.length;
 
   let t0=null;
   function frame(ts){
@@ -1815,18 +1834,22 @@ function init2D(){
       }
     }
 
-    // ── 다공정 작업자: 컨베어와 동기화, multiWorkers명 ──
+    // ── 다공정 작업자: waypoints(SUB 경유) 동기화 ──
     for(let wi=0;wi<multiWorkers;wi++){
-      const si=(wi+advN)%MN; // 현재 스테이션 인덱스
-      const ni=(si+1)%MN;
-      const wx=isTransit?bx(si)+(bx(ni)-bx(si))*easeIO(trP):bx(si);
+      const si=(wi+advN)%NWP;
+      const ni=(si+1)%NWP;
+      const wpc=waypoints[si],wpn=waypoints[ni];
+      const wx=isTransit?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x;
+      const wy=isTransit?wpc.y+(wpn.y-wpc.y)*easeIO(trP):wpc.y;
       const wcolor=`hsl(${20+wi*30},85%,58%)`;
-      drawW(wx,WY_BOT,wcolor,`W${wi+1}`,10);
+      drawW(wx,wy,wcolor,`W${wi+1}`,10);
     }
     // 현재 작업 공정 하이라이트 (W1 기준)
-    {const si=advN%MN;const bx2=LX+si*BW/NB+1.5,bw2=BW/NB-3;
-    ctx.strokeStyle='rgba(234,88,12,0.45)';ctx.lineWidth=2;
-    rr(bx2-1,BTOP-1,bw2+2,BBOXH+2,4);ctx.stroke();}
+    {const si=advN%NWP;const wp=waypoints[si];
+    if(!wp.isSub&&wp.bIdx>=0){
+      const bx2=LX+wp.bIdx*BW/NB+1.5,bw2=BW/NB-3;
+      ctx.strokeStyle='rgba(234,88,12,0.45)';ctx.lineWidth=2;
+      rr(bx2-1,BTOP-1,bw2+2,BBOXH+2,4);ctx.stroke();}}
 
     // 피치 구분선
     ctx.strokeStyle='rgba(99,102,241,0.18)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
@@ -1843,6 +1866,22 @@ function init2D(){
   }
   _raf2d=requestAnimationFrame(frame);
 }
+
+/* ─── 조립3라인 이름 마이그레이션 (111/121/131… → 1공정/2공정/3공정…) ──── */
+(function migrateC3Names(){
+  const key='conv_struct_2_0';
+  const raw=localStorage.getItem(key);
+  if(!raw)return;
+  try{
+    const map={'111':'1공정','121':'2공정','131':'3공정','141':'4공정','142':'5공정','143':'6공정',
+      '151':'7공정','152':'8공정','161':'9공정','171':'10공정','181':'11공정','191':'12공정',
+      '에어백 서브1':'SUB03 에어백','센터페시아 서브1':'센터페시아 SUB'};
+    const rows=JSON.parse(raw);
+    let changed=false;
+    rows.forEach(r=>{if(map[r.name]){r.name=map[r.name];changed=true;}});
+    if(changed)localStorage.setItem(key,JSON.stringify(rows));
+  }catch(e){}
+})();
 
 /* ─── 초기화 ──────────────────────────────────── */
 buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();renderCT();
