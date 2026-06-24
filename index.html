@@ -1672,11 +1672,17 @@ function init2D(){
       ctx.save();ctx.translate(k===0?RX+16:LX-16,(TY+BY)/2);ctx.rotate(k===0?-Math.PI/2:Math.PI/2);
       ctx.fillStyle='#0369a1';ctx.font='8px Malgun Gothic';ctx.textAlign='center';ctx.fillText(t,0,0);ctx.restore();
     });
-    [{cx:RX},{cx:LX}].forEach(({cx})=>{
-      ctx.strokeStyle='#0284c7';ctx.lineWidth=2;ctx.setLineDash([3,3]);
-      ctx.beginPath();ctx.arc(cx,(TY+BY)/2,18,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle='#075985';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
-      ctx.fillText('회전',cx,(TY+BY)/2+3);
+    // ── 스키드 회전 스테이션 (양쪽 코너) ──
+    const SKID_CT=62.4, SKID_W=42, SKID_H=62, midY=(TY+BY)/2;
+    [{cx:RX,s:'우→상'},{cx:LX,s:'하→우'}].forEach(({cx,s})=>{
+      const skLoad=pitch>0?SKID_CT/pitch*100:0;
+      rr(cx-SKID_W/2,midY-SKID_H/2,SKID_W,SKID_H,4);
+      ctx.fillStyle=skLoad>100?'#7f1d1d':skLoad>85?'#78350f':'#0c2340';ctx.fill();
+      ctx.strokeStyle=skLoad>100?'#ef4444':skLoad>85?'#f59e0b':'#0284c7';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle='#67e8f9';ctx.font='bold 7px Malgun Gothic';ctx.textAlign='center';
+      ctx.fillText('스키드',cx,midY-18);ctx.fillText('회전',cx,midY-8);
+      ctx.fillStyle='#0ea5e9';ctx.font='bold 7px Malgun Gothic';ctx.fillText(SKID_CT+'초',cx,midY+4);
+      ctx.fillStyle='#38bdf8';ctx.font='12px Malgun Gothic';ctx.fillText('↻',cx,midY+18);
     });
 
     // ── 하단 공정 박스 ──
@@ -1754,25 +1760,69 @@ function init2D(){
       }
     });
 
-    // ── 지그: NSLOT개, 각 슬롯별 다른 라벨/크기, 동기화 이동 ──
+    // ── 지그: NSLOT개, 각 슬롯별 라벨/크기, 코너에서 180° 회전 ──
     for(let j=0;j<NSLOT;j++){
       const curS=(j+advN)%NSLOT;
       const nxtS=(curS+1)%NSLOT;
       const f0=slotFrac(curS);
       let f1=slotFrac(nxtS);
-      if(f1<f0)f1+=1; // wrap
+      if(f1<f0)f1+=1;
       const frac=isTransit?f0+(f1-f0)*easeIO(trP):f0;
       const pos=jigXY(frac);
       const jw=slotJigW(curS);
       const jh=TW-2;
       const lbl=slotLabel(curS);
       const isCorner=curS===NB||curS===NSLOT-1;
-      const jw2=isCorner?TW*1.2:jw, jh2=isCorner?TW*1.2:jh;
-      rr(pos.x-jw2/2,pos.y-jh2/2,jw2,jh2,3);
-      ctx.fillStyle='#1d4ed8';ctx.fill();
-      ctx.strokeStyle='#60a5fa';ctx.lineWidth=isCorner?1:1.5;ctx.stroke();
-      ctx.fillStyle='#bfdbfe';ctx.font=`bold ${isCorner?6:7}px Malgun Gothic`;ctx.textAlign='center';
-      ctx.fillText(lbl,pos.x,pos.y+2.5);
+      const jw2=isCorner?TW*1.4:jw, jh2=isCorner?TW*1.4:jh;
+      // 코너 체류 중: 0→π 회전 (180°)
+      const rotA=isCorner&&!isTransit?(Math.PI*cycleEl/(1-TR_F)):isCorner&&isTransit?Math.PI:0;
+      ctx.save();
+      ctx.translate(pos.x,pos.y);
+      ctx.rotate(rotA);
+      rr(-jw2/2,-jh2/2,jw2,jh2,3);
+      ctx.fillStyle=isCorner?'#1e3a5f':'#1d4ed8';ctx.fill();
+      ctx.strokeStyle=isCorner?'#0ea5e9':'#60a5fa';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle=isCorner?'#67e8f9':'#bfdbfe';ctx.font=`bold ${isCorner?6:7}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillText(isCorner?'↻':lbl,0,2.5);
+      ctx.restore();
+    }
+
+    // ── 병목 앞 대기(queue) 표시 ──
+    if(pitch>0){
+      // 하단 병목
+      let bnBot=-1,bnCT=0;
+      botRows.forEach((r,i)=>{if((r.ct||0)>bnCT){bnCT=r.ct||0;bnBot=i;}});
+      const qLenB=bnBot>0&&bnCT>pitch?Math.min(Math.ceil(bnCT/pitch)-1,5):0;
+      if(qLenB>0){
+        const slotW=BW/NB;
+        for(let q=1;q<=qLenB;q++){
+          const qx=bx(bnBot)-slotW*q+slotW*0.5;
+          if(qx<LX+slotW*0.3)break;
+          const alpha=Math.max(0.15,0.7-q*0.12);
+          rr(qx-slotW*0.35,BY-TW/2-6,slotW*0.7,6,2);
+          ctx.fillStyle=`rgba(239,68,68,${alpha})`;ctx.fill();
+          ctx.strokeStyle=`rgba(248,113,113,${alpha})`;ctx.lineWidth=1;ctx.stroke();
+        }
+        ctx.fillStyle='#f87171';ctx.font='bold 7px Malgun Gothic';ctx.textAlign='center';
+        ctx.fillText(`⏸ 대기 ${qLenB}대`,bx(bnBot)-BW/NB*0.5,BY+TW/2+8);
+      }
+      // 상단 병목
+      let bnTop=-1,bnCTT=0;
+      topRows.forEach((r,i)=>{if((r.ct||0)>bnCTT){bnCTT=r.ct||0;bnTop=i;}});
+      const qLenT=bnTop>=0&&bnTop<NT-1&&bnCTT>pitch?Math.min(Math.ceil(bnCTT/pitch)-1,5):0;
+      if(qLenT>0){
+        const slotW=BW/NT;
+        for(let q=1;q<=qLenT;q++){
+          const qx=tx_(bnTop)+slotW*q-slotW*0.5;
+          if(qx>RX-slotW*0.3)break;
+          const alpha=Math.max(0.15,0.7-q*0.12);
+          rr(qx-slotW*0.35,TY-TW/2,slotW*0.7,6,2);
+          ctx.fillStyle=`rgba(239,68,68,${alpha})`;ctx.fill();
+          ctx.strokeStyle=`rgba(248,113,113,${alpha})`;ctx.lineWidth=1;ctx.stroke();
+        }
+        ctx.fillStyle='#f87171';ctx.font='bold 7px Malgun Gothic';ctx.textAlign='center';
+        ctx.fillText(`⏸ 대기 ${qLenT}대`,tx_(bnTop)+BW/NT*0.5,TY-TW/2-4);
+      }
     }
 
     // ── 다공정 작업자 (박스 바로 아래) ──
