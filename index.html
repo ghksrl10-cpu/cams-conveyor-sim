@@ -1009,6 +1009,8 @@ function loadRowStructure(){
   try{
     const saved=JSON.parse(raw);
     if(Array.isArray(saved)&&saved.length>0){
+      // conv 필드 없으면 자동 설정
+      saved.forEach((r,i)=>{if(r.conv===undefined||r.conv===null)r.conv=i+1;});
       state[curLine][curSub].rows=saved;
       return true;
     }
