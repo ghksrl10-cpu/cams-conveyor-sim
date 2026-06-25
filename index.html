@@ -744,9 +744,11 @@ function showView(v){
   if(v==='scen')renderScen();
   if(v==='2d')init2D();
   toggleNav(false);
+  localStorage.setItem('conv_lastView',v);
 }
 function gotoSim(li){
   curLine=li;curSub=0;
+  localStorage.setItem('conv_lastLine',li);
   showView('sim');
   buildStabs();loadLineData();
   document.getElementById('simTitle').textContent=LINE_DEF[li].name+' — '+LINE_DEF[li].subs[0];
@@ -2390,6 +2392,15 @@ function init2D(){
 
 /* ─── 초기화 ──────────────────────────────────── */
 buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();renderCT();
+// 마지막 페이지 복원
+(function(){
+  const lv=localStorage.getItem('conv_lastView');
+  const ll=parseInt(localStorage.getItem('conv_lastLine')||'-1');
+  if(lv&&lv!=='main'){
+    if(lv==='sim'&&ll>=0){gotoSim(ll);}
+    else{showView(lv);}
+  }
+})();
 </script>
 
 <!-- ===== 기아 인정표 C/T 계산기 모달 ===== -->
