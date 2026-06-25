@@ -2144,7 +2144,7 @@ function init2D(){
     topRows.forEach((r,i)=>{
       const cx=tx_(i),tw2=BW/NT-3,tx2=RX-i*BW/NT-BW/NT+1.5;
       const ct=r.ct||0;
-      const isDaegiT=r.empty||r.name==='대기'||(r.name===''&&!r.task&&!ct);
+      const isDaegiT=!ct&&(r.empty||r.name==='대기'||(r.name===''&&!r.task));
       const procNumT=half+i+1;
       const dispNameT=isDaegiT?`${procNumT}공정`:(r.name||`${procNumT}공정`).slice(0,6);
       rr(tx2,TTOP,tw2,TBOXH,3);
