@@ -2011,8 +2011,8 @@ function init2D(){
     ...topRows.map(r=>r.ct||0)
   );
   const bottleneckCT=Math.max(grpEffCT, singleMaxCT);
-  // C/T 입력값 있으면 그 병목으로, 없으면 피치로 fallback
-  const animBase=bottleneckCT>0?bottleneckCT:pitch;
+  // 애니메이션 기준: 다공정 유효C/T 우선, 없으면 단공정 병목, 없으면 피치
+  const animBase=grpEffCT>0?grpEffCT:(singleMaxCT>0?singleMaxCT:pitch);
   const PANIM=Math.max(0.5, animBase/simSpeedX);
   const TR_F=0.18; // transit 비율
 
