@@ -2356,23 +2356,20 @@ function init2D(){
     for(let wi=0;wi<multiWorkers;wi++){
       const baseOff=procIdx[Math.floor(wi*npi/multiWorkers)]||0;
       const si=(baseOff+workerAdvN)%NWP;
-      const ni=(si+1)%NWP;
-      const wpc=waypoints[si],wpn=waypoints[ni];
-      const atQueue=waypoints[si].isQueue;
-      // 공피치일 때 C/PAD에 있는 작업자: 현재 슬롯에 공피치인지 확인 (상태 표시용)
-      let atKongSlot=false;
-      if(!atQueue&&waypoints[si].bIdx>=0&&pn>0){
+      // 공피치 슬롯 → 큐로 리다이렉트 (dispNi=1공정 고정으로 SUB 이중출현 방지)
+      let dispSi=si, dispNi=(si+1)%NWP;
+      if(!waypoints[si].isQueue&&waypoints[si].bIdx>=0&&pn>0){
         const jAt=((waypoints[si].bIdx-advN%NSLOT)+NSLOT*100)%NSLOT;
-        atKongSlot=(jAt%(pn+1))===pn;
+        if(jAt%(pn+1)===pn){dispSi=0;dispNi=1;} // 큐→1공정 고정
       }
-      // 큐 작업자들 가로로 벌려서 겹치지 않게
+      const atQueue=waypoints[dispSi].isQueue;
       const qOff=atQueue?(queueCount++)*16:0;
-      // 큐 작업자: 공피치일 때만 대기, 실제 지그 오면 투입
+      const wpc=waypoints[dispSi],wpn=waypoints[dispNi];
       const shouldMove=isTransit&&!(atQueue&&curJigIsKong);
       const wx=(shouldMove?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x)+qOff;
       const wy=shouldMove?wpc.y+(wpn.y-wpc.y)*easeIO(trP):wpc.y;
       const wcolor=`hsl(${20+wi*30},85%,58%)`;
-      const lbl=atQueue?(curJigIsKong?`W${wi+1}⏸`:`W${wi+1}`):atKongSlot?`W${wi+1}⏸`:`W${wi+1}`;
+      const lbl=atQueue?(curJigIsKong?`W${wi+1}⏸`:`W${wi+1}`):`W${wi+1}`;
       drawW(wx,wy,wcolor,lbl,10);
     }
     // 현재 작업 공정 하이라이트 (W1 기준)
