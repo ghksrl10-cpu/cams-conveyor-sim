@@ -1794,7 +1794,7 @@ function init2D(){
   const BBOXH=58, BPADY=24, TBOXH=58, TPADY=8;
   const BTOP=BY-TW/2-BBOXH-BPADY;  // 박스 위쪽 Y (벨트와 간격 확보)
   const TTOP=TY+TW/2+TPADY;
-  const WY_BOT=BY+TW/2+18;      // 하단 작업자 Y (레일 아래쪽 바깥)
+  const WY_BOT=BTOP+BBOXH+14;   // 하단 작업자 Y (박스 아래, 레일 위 사이)
   const WY_TOP=TY-TW/2-14;      // 상단 작업자 Y (레일 위쪽 바깥)
   const bx=i=>LX+(i+0.5)*BW/NB;
   const tx_=i=>RX-(i+0.5)*BW/NT;
