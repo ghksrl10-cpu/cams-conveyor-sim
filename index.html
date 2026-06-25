@@ -2335,22 +2335,32 @@ function init2D(){
     const kongPassed=pn>0?Math.floor(advN/(pn+1)):0;
     const workerAdvN=advN-kongPassed; // 공피치 제외한 실질 진행 횟수
     const curJigIsKong=pn>0&&(advN%(pn+1))===pn;   // 현재 정지 지그가 공피치
-    const nextJigIsKong=pn>0&&((advN+1)%(pn+1))===pn; // 다음 지그가 공피치
     // 대기 waypoint 제외하고 공정 위치에 균등 분산
     const procIdx=waypoints.map((_,i)=>i).filter(i=>!waypoints[i].isQueue);
     const npi=procIdx.length||NWP;
+    // 큐에 대기 중인 작업자 수 (공피치 위치 겹침 포함)
+    let queueCount=0;
     for(let wi=0;wi<multiWorkers;wi++){
       const baseOff=procIdx[Math.floor(wi*npi/multiWorkers)]||0;
       const si=(baseOff+workerAdvN)%NWP;
-      const ni=(si+1)%NWP;
-      const wpc=waypoints[si],wpn=waypoints[ni];
-      // 공피치 차단: 대기 자리에 있는 작업자만 — 라인 안 작업자는 지그 따라 계속 이동
-      const atQueue=waypoints[si].isQueue;
-      const shouldMove=isTransit&&!(atQueue&&(curJigIsKong||nextJigIsKong));
-      const wx=shouldMove?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x;
+      // 공피치 슬롯에 작업자가 겹치면 큐 위치로 리다이렉트
+      let dispSi=si;
+      if(!waypoints[si].isQueue&&waypoints[si].bIdx>=0&&pn>0){
+        const bIdx=waypoints[si].bIdx;
+        const jAt=((bIdx-advN%NSLOT)+NSLOT*100)%NSLOT;
+        if(jAt%(pn+1)===pn) dispSi=0; // 공피치 슬롯 → 큐로
+      }
+      const atQueue=waypoints[dispSi].isQueue;
+      const isWaiting=atQueue&&curJigIsKong;
+      // 큐 작업자들 가로로 벌려서 겹치지 않게
+      const qOff=atQueue?(queueCount++)*16:0;
+      const ni=(dispSi+1)%NWP;
+      const wpc=waypoints[dispSi],wpn=waypoints[ni];
+      const shouldMove=isTransit&&!atQueue; // 큐 작업자는 이동 없음
+      const wx=(shouldMove?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x)+qOff;
       const wy=shouldMove?wpc.y+(wpn.y-wpc.y)*easeIO(trP):wpc.y;
       const wcolor=`hsl(${20+wi*30},85%,58%)`;
-      drawW(wx,wy,wcolor,atQueue?(curJigIsKong||nextJigIsKong?`W${wi+1}⏸`:`W${wi+1}`):(`W${wi+1}`),10);
+      drawW(wx,wy,wcolor,atQueue?(isWaiting?`W${wi+1}⏸`:`W${wi+1}`):`W${wi+1}`,10);
     }
     // 현재 작업 공정 하이라이트 (W1 기준)
     {const si=advN%NWP;const wp=waypoints[si];
