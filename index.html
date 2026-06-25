@@ -1794,7 +1794,7 @@ function init2D(){
   const BBOXH=58, BPADY=24, TBOXH=58, TPADY=8;
   const BTOP=BY-TW/2-BBOXH-BPADY;  // 박스 위쪽 Y (벨트와 간격 확보)
   const TTOP=TY+TW/2+TPADY;
-  const WY_BOT=BTOP+BBOXH+14;  // 하단 작업자 Y (박스 아래)
+  const WY_BOT=BY+TW/2+18;      // 하단 작업자 Y (레일 아래쪽 바깥)
   const WY_TOP=TY-TW/2-14;      // 상단 작업자 Y (레일 위쪽 바깥)
   const bx=i=>LX+(i+0.5)*BW/NB;
   const tx_=i=>RX-(i+0.5)*BW/NT;
@@ -1983,7 +1983,7 @@ function init2D(){
         } else if(w>0){
           rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
           ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,BTOP+48);
-          drawW(cx,WY_BOT,'#15803d',w+'명',9);
+          botWQ.push({cx,w});
         }
       }
       // ── 실시간 작업상태 (C/T 기반 개별 판단) ──
@@ -2024,6 +2024,7 @@ function init2D(){
     const fst=NT>15?7:NT>11?8:NT>8?9:10;
     const topWQ=[]; // 상단 작업자 지연 큐 (지그 이후 그림)
     const subWQ=[]; // SUB 작업자 지연 큐 (지그 이후 그림)
+    const botWQ=[]; // 하단 단독작업자 지연 큐 (지그 이후 그림)
     topRows.forEach((r,i)=>{
       const cx=tx_(i),tw2=BW/NT-3,tx2=RX-i*BW/NT-BW/NT+1.5;
       const ct=r.ct||0;
@@ -2125,6 +2126,7 @@ function init2D(){
 
     // ── 상단·SUB 작업자 (지그 위에 표시) ──
     topWQ.forEach(({cx,w})=>drawW(cx,WY_TOP,'#15803d',w+'명',9));
+    botWQ.forEach(({cx,w})=>drawW(cx,WY_BOT,'#15803d',w+'명',9));
     subWQ.forEach(({sx})=>drawW(sx,SY+62,'#7c3aed','서브',8));
 
     // ── 병목 앞 대기(queue) 표시 ──
