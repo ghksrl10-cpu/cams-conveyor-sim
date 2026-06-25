@@ -455,6 +455,7 @@
       <h1>조립 3라인 C/PAD — 컨베어 2D 시뮬레이션</h1>
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}loadLineData();init2D();">🔄 불러오기</button>
+        <button class="btn warn" style="font-size:13px;padding:6px 14px" onclick="if(confirm('공정 데이터를 기본값으로 초기화합니다. 계속할까요?')){localStorage.setItem('conv_struct_2_0',JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));loadLineData();init2D();}">🔁 기본값 초기화</button>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="exportSimConfig()">💾 내보내기</button>
         <label class="btn" style="font-size:13px;padding:6px 14px;cursor:pointer">📂 가져오기<input type="file" accept=".json" style="display:none" onchange="importSimConfig(this)"></label>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="gotoSim(2)">📋 공정입력</button>
@@ -1769,6 +1770,12 @@ function init2D(){
   document.getElementById('sim2dPitch').textContent=pitch.toFixed(1);
 
   // ── 행 분류: 모든 비-SUB 행 포함 (taskSpan:0도 각각 스테이션) ──
+  // 데이터 이상 시 기본값 복구
+  if(!G().rows||G().rows.length<6){
+    const key='conv_struct_2_0';
+    localStorage.setItem(key,JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));
+    loadLineData();
+  }
   const allRows=G().rows;
   const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
   const mainRows=allRows.filter(r=>!isSUB(r));
