@@ -2396,10 +2396,10 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
 (function(){
   const lv=localStorage.getItem('conv_lastView');
   const ll=parseInt(localStorage.getItem('conv_lastLine')||'-1');
-  if(lv&&lv!=='main'){
-    if(lv==='sim'&&ll>=0){gotoSim(ll);}
-    else{showView(lv);}
-  }
+  if(!lv||lv==='main')return;
+  if(lv==='sim'&&ll>=0){gotoSim(ll);}
+  else if(lv==='2d'){showView('2d');setTimeout(()=>init2D(),200);}
+  else{showView(lv);}
 })();
 </script>
 
