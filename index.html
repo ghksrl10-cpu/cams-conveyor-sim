@@ -2051,19 +2051,16 @@ function init2D(){
     return bx(Math.min(3,NB-1));
   }
 
-  // ── 작업자 경로 (SUB 에어백 경유) ──
-  const SY_W=BY+TW/2+55+28; // SUB 박스 내 작업자 Y
+  // ── 작업자 경로: 1공정 왼쪽 대기 → 1~6공정 → 복귀 로테이션 ──
+  const SY_W=BY+TW/2+55+28;
   const subAirX=subRows.length>0?subParentBotX(subRows[0]):null;
   const waypoints=[];
+  // 대기 waypoint: 1공정 왼쪽 바깥
+  waypoints.push({x:LX-slotW*1.1,y:WY_BOT,bIdx:-1,isSub:false,isQueue:true});
   for(let i=0;i<MN;i++){
-    waypoints.push({x:bx(i),y:WY_BOT,bIdx:i,isSub:false});
-    // 4공정(index 3) 완료 후 SUB 에어백 경유
-    const isIdx4=botRows[i]&&/^4공정$|^141$/.test(botRows[i].name||'');
-    const isFallback4=!botRows.some(r=>/^4공정$|^141$/.test(r.name||''))&&i===Math.min(3,MN-1);
-    if((isIdx4||isFallback4)&&subAirX!==null)
-      waypoints.push({x:subAirX,y:SY_W,bIdx:-1,isSub:true});
+    waypoints.push({x:bx(i),y:WY_BOT,bIdx:i,isSub:false,isQueue:false});
   }
-  const NWP=waypoints.length;
+  const NWP=waypoints.length; // 대기1 + 공정MN
 
   let t0=null;
   function frame(ts){
@@ -2331,19 +2328,26 @@ function init2D(){
     }
 
     // ── 다공정 작업자: waypoints(SUB 경유) 동기화 ──
-    // 공피치 대차가 오면 작업자는 제자리 대기, 실제 대차에서만 이동
+    // 공피치 대차에서는 작업자 이동 없음 — 실제 대차에서만 이동
     const kongPassed=pn>0?Math.floor(advN/(pn+1)):0;
     const workerAdvN=advN-kongPassed; // 공피치 제외한 실질 진행 횟수
-    const curJigIsKong=pn>0&&(advN%(pn+1))===pn; // 지금 들어오는 지그가 공피치인지
+    const curJigIsKong=pn>0&&(advN%(pn+1))===pn;   // 현재 정지 지그가 공피치
+    const nextJigIsKong=pn>0&&((advN+1)%(pn+1))===pn; // 다음 지그가 공피치
+    // 대기 waypoint 제외하고 공정 위치에 균등 분산
+    const procIdx=waypoints.map((_,i)=>i).filter(i=>!waypoints[i].isQueue);
+    const npi=procIdx.length||NWP;
     for(let wi=0;wi<multiWorkers;wi++){
-      const si=(wi+workerAdvN)%NWP;
+      const baseOff=procIdx[Math.floor(wi*npi/multiWorkers)]||0;
+      const si=(baseOff+workerAdvN)%NWP;
       const ni=(si+1)%NWP;
       const wpc=waypoints[si],wpn=waypoints[ni];
-      // 공피치 대차가 들어오는 transit 중이면 작업자는 이동 안 함(대기)
-      const wx=(!curJigIsKong&&isTransit)?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x;
-      const wy=(!curJigIsKong&&isTransit)?wpc.y+(wpn.y-wpc.y)*easeIO(trP):wpc.y;
+      // 공피치 차단: 대기 자리에 있는 작업자만 — 라인 안 작업자는 지그 따라 계속 이동
+      const atQueue=waypoints[si].isQueue;
+      const shouldMove=isTransit&&!(atQueue&&(curJigIsKong||nextJigIsKong));
+      const wx=shouldMove?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x;
+      const wy=shouldMove?wpc.y+(wpn.y-wpc.y)*easeIO(trP):wpc.y;
       const wcolor=`hsl(${20+wi*30},85%,58%)`;
-      drawW(wx,wy,wcolor,curJigIsKong?`W${wi+1}⏸`:`W${wi+1}`,10);
+      drawW(wx,wy,wcolor,atQueue?(curJigIsKong||nextJigIsKong?`W${wi+1}⏸`:`W${wi+1}`):(`W${wi+1}`),10);
     }
     // 현재 작업 공정 하이라이트 (W1 기준)
     {const si=advN%NWP;const wp=waypoints[si];
