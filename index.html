@@ -2368,14 +2368,17 @@ function init2D(){
       const wcolor=`hsl(${20+wi*30},85%,58%)`;
       if(wi<rDesc.length){
         const s=rDesc[wi];
-        // SUB에어백: slot 3→4 전환구간 작업자는 SUB로
-        const subSlot=subAirX!==null?3:-1; // 4공정(slot3) 다음 SUB 경유
+        // SUB에어백: 4공정(slot3) transit 중 SUB 경유 후 5공정으로 복귀
+        // 동선: 4공정 체류 → (transit) SUB들렀다가 → 5공정 도착 → 5공정 체류 → 6공정...
+        const subSlot=subAirX!==null?3:-1;
         if(!isTransit){
-          if(s===subSlot+1&&subAirX!==null){wx=subAirX;wy=SY_W;} // 5공정 자리→SUB 체류
-          else{wx=bx(s);wy=WY_BOT;}
+          wx=bx(s);wy=WY_BOT; // 모든 공정 체류 시 해당 공정 위치
         } else {
-          if(s===subSlot&&subAirX!==null){wx=bx(s)+(subAirX-bx(s))*easeIO(trP);wy=WY_BOT+(SY_W-WY_BOT)*easeIO(trP);}
-          else if(s===subSlot+1&&subAirX!==null){wx=subAirX+(bx(s)-subAirX)*easeIO(trP);wy=SY_W+(WY_BOT-SY_W)*easeIO(trP);}
+          if(s===subSlot&&subAirX!==null){
+            // transit 전반: 4공정→SUB, 후반: SUB→5공정
+            if(trP<0.5){const t2=trP/0.5;wx=bx(s)+(subAirX-bx(s))*easeIO(t2);wy=WY_BOT+(SY_W-WY_BOT)*easeIO(t2);}
+            else{const t2=(trP-0.5)/0.5;wx=subAirX+(bx(s+1)-subAirX)*easeIO(t2);wy=SY_W+(WY_BOT-SY_W)*easeIO(t2);}
+          }
           else if(s===MN-1){wx=bx(s)+(queueX-bx(s))*easeIO(trP);wy=WY_BOT;} // 6공정→큐
           else{wx=bx(s)+(bx(s+1)-bx(s))*easeIO(trP);wy=WY_BOT;}
         }
