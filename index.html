@@ -2369,7 +2369,8 @@ function init2D(){
       const qOff=atQueue?(queueCount++)*16:0;
       const ni=(dispSi+1)%NWP;
       const wpc=waypoints[dispSi],wpn=waypoints[ni];
-      const shouldMove=isTransit&&!atQueue; // 큐 작업자는 이동 없음
+      // 큐 작업자: 공피치일 때만 대기, 실제 지그 오면 투입
+      const shouldMove=isTransit&&!(atQueue&&curJigIsKong);
       const wx=(shouldMove?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x)+qOff;
       const wy=shouldMove?wpc.y+(wpn.y-wpc.y)*easeIO(trP):wpc.y;
       const wcolor=`hsl(${20+wi*30},85%,58%)`;
