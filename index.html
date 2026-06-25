@@ -455,7 +455,7 @@
       <h1>조립 3라인 C/PAD — 컨베어 2D 시뮬레이션</h1>
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}loadLineData();init2D();">🔄 불러오기</button>
-        <button class="btn warn" style="font-size:13px;padding:6px 14px" onclick="if(confirm('공정 데이터를 기본값으로 초기화합니다. 계속할까요?')){localStorage.setItem('conv_struct_2_0',JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));loadLineData();init2D();}">🔁 기본값 초기화</button>
+        <button class="btn warn" style="font-size:13px;padding:6px 14px" onclick="if(confirm('공정 데이터를 기본값으로 초기화합니다. 계속할까요?')){localStorage.setItem('conv_struct_2_0',JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));loadLineData();init2D();if(typeof _simPushCloud==='function')_simPushCloud();}">🔁 기본값 초기화</button>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="exportSimConfig()">💾 내보내기</button>
         <label class="btn" style="font-size:13px;padding:6px 14px;cursor:pointer">📂 가져오기<input type="file" accept=".json" style="display:none" onchange="importSimConfig(this)"></label>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="gotoSim(2)">📋 공정입력</button>
@@ -531,7 +531,17 @@
         const data=snap.data()||{};
         let changed=false;
         Object.entries(data).forEach(([k,v])=>{
-          if(v!==null&&v!==undefined){localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));changed=true;}
+          if(v===null||v===undefined)return;
+          if(k.startsWith('conv_struct')){
+            try{
+              const arr=typeof v==='string'?JSON.parse(v):v;
+              if(!Array.isArray(arr)||arr.length<12){
+                console.warn('Firestore 초기 데이터 행 수 부족, 무시함:',k,arr?.length);
+                return;
+              }
+            }catch(e){console.warn('Firestore 초기 파싱 실패, 무시함:',k);return;}
+          }
+          localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));changed=true;
         });
         if(changed&&typeof loadLineData==='function'){loadLineData();if(typeof renderScenarios==='function')renderScenarios();}
         document.getElementById('syncDot').style.background='#22c55e';
@@ -544,6 +554,16 @@
         const data=snap.data()||{};
         let changed=false;
         Object.entries(data).forEach(([k,v])=>{
+          // conv_struct 데이터 검증: 최소 12행 이상이어야 적용
+          if(k.startsWith('conv_struct')){
+            try{
+              const arr=typeof v==='string'?JSON.parse(v):v;
+              if(!Array.isArray(arr)||arr.length<12){
+                console.warn('Firestore 데이터 행 수 부족, 무시함:',k,arr?.length);
+                return;
+              }
+            }catch(e){console.warn('Firestore 파싱 실패, 무시함:',k);return;}
+          }
           const cur=localStorage.getItem(k);
           const nv=typeof v==='string'?v:JSON.stringify(v);
           if(nv!==cur){localStorage.setItem(k,nv);changed=true;}
@@ -1920,6 +1940,11 @@ function init2D(){
 
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
+
+    // ── 디버그 정보 (좌상단) ──
+    ctx.fillStyle='#facc15';ctx.font='bold 11px monospace';ctx.textAlign='left';
+    ctx.fillText(`rows=${allRows.length} main=${mainRows.length} NB=${NB} NT=${NT} half=${half}`,8,14);
+    ctx.textAlign='center';
 
     // ── 벨트 트랙 ──
     function drawTrack(col,lw){
