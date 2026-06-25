@@ -1986,16 +1986,22 @@ function init2D(){
           drawW(cx,WY_BOT,'#15803d',w+'명',9);
         }
       }
-      // ── 실시간 작업상태 표시 ──
+      // ── 실시간 작업상태 (C/T 기반 개별 판단) ──
       if(!showDaegi){
         const jAt=((i-advN%NSLOT)+NSLOT*100)%NSLOT;
         const onKong=pn>0&&(jAt%(pn+1))===pn;
-        const stColor=isTransit?'#f59e0b':onKong?'#475569':'#22c55e';
-        const stLabel=isTransit?'이동중':onKong?'대기중':'작업중';
-        // 상태 점
+        const effCT=isM?grpEffCT:ct; // 다공정=그룹유효CT, 단공정=개별CT
+        const workFrac=pitch>0&&effCT>0?effCT/pitch:0;
+        const workDone=cycleEl/( 1-TR_F)>=workFrac; // 피치 내 작업 완료 여부
+        let stColor,stLabel;
+        if(isTransit){stColor='#f59e0b';stLabel='이동중';}
+        else if(onKong){stColor='#475569';stLabel='대기중';}
+        else if(effCT===0){stColor='#334155';stLabel='미설정';}
+        else if(workFrac>1){stColor='#ef4444';stLabel='과부하';}  // C/T > 피치
+        else if(workDone){stColor='#3b82f6';stLabel='완료대기';} // 끝나고 컨베어 대기
+        else{stColor='#22c55e';stLabel='작업중';}
         ctx.beginPath();ctx.arc(bx2+6,BTOP+6,3.5,0,Math.PI*2);
         ctx.fillStyle=stColor;ctx.fill();
-        // 상태 텍스트 (박스 우상단)
         ctx.fillStyle=stColor;ctx.font='bold 6px Malgun Gothic';ctx.textAlign='right';
         ctx.fillText(stLabel,bx2+bw2-4,BTOP+9);
         ctx.textAlign='center';
@@ -2041,12 +2047,19 @@ function init2D(){
           ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,TTOP+52);
           topWQ.push({cx,w}); // 지그 이후 그리기
         }
-        // 상단 실시간 작업상태
-        const topSlot=NB+1+i; // 상단은 역방향
+        // 상단 실시간 작업상태 (C/T 기반 개별 판단)
+        const topSlot=NB+1+i;
         const jAtT=((topSlot-advN%NSLOT)+NSLOT*100)%NSLOT;
         const onKongT=pn>0&&(jAtT%(pn+1))===pn;
-        const stColorT=isTransit?'#f59e0b':onKongT?'#475569':'#22c55e';
-        const stLabelT=isTransit?'이동중':onKongT?'대기중':'작업중';
+        const workFracT=pitch>0&&ct>0?ct/pitch:0;
+        const workDoneT=cycleEl/(1-TR_F)>=workFracT;
+        let stColorT,stLabelT;
+        if(isTransit){stColorT='#f59e0b';stLabelT='이동중';}
+        else if(onKongT){stColorT='#475569';stLabelT='대기중';}
+        else if(ct===0){stColorT='#334155';stLabelT='미설정';}
+        else if(workFracT>1){stColorT='#ef4444';stLabelT='과부하';}
+        else if(workDoneT){stColorT='#3b82f6';stLabelT='완료대기';}
+        else{stColorT='#22c55e';stLabelT='작업중';}
         ctx.beginPath();ctx.arc(tx2+6,TTOP+6,3.5,0,Math.PI*2);
         ctx.fillStyle=stColorT;ctx.fill();
         ctx.fillStyle=stColorT;ctx.font='bold 6px Malgun Gothic';ctx.textAlign='right';
