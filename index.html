@@ -540,6 +540,14 @@
                 console.warn('Firestore 초기 데이터 행 수 부족, 무시함:',k,arr?.length);
                 return;
               }
+              const isSB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+              const mn=arr.filter(r=>!isSB(r));
+              const half=Math.ceil(mn.length/2);
+              const top=mn.slice(half);
+              if(top.length>=9&&top.every(r=>!(r.ct>0))){
+                console.warn('Firestore 초기 상단 CT 전부 0, 무시함:',k);
+                return;
+              }
             }catch(e){console.warn('Firestore 초기 파싱 실패, 무시함:',k);return;}
           }
           localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));changed=true;
@@ -561,6 +569,15 @@
               const arr=typeof v==='string'?JSON.parse(v):v;
               if(!Array.isArray(arr)||arr.length<18){
                 console.warn('Firestore 데이터 행 수 부족, 무시함:',k,arr?.length);
+                return;
+              }
+              // 상단 공정(half 이후) CT 전부 0이면 무효 데이터 → 무시
+              const isSB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+              const mn=arr.filter(r=>!isSB(r));
+              const half=Math.ceil(mn.length/2);
+              const top=mn.slice(half);
+              if(top.length>=9&&top.every(r=>!(r.ct>0))){
+                console.warn('Firestore 상단 공정 CT 전부 0, 무시함:',k);
                 return;
               }
             }catch(e){console.warn('Firestore 파싱 실패, 무시함:',k);return;}
