@@ -2025,7 +2025,9 @@ function init2D(){
 
     // ── 디버그 정보 (좌상단) ──
     ctx.fillStyle='#facc15';ctx.font='bold 11px monospace';ctx.textAlign='left';
+    const _tcts=topRows.map(r=>(r.ct||0)+'('+r.name+')').join(' | ');
     ctx.fillText(`rows=${allRows.length} main=${mainRows.length} NB=${NB} NT=${NT} half=${half}`,8,14);
+    ctx.fillText(`top CTs: ${_tcts}`,8,28);
     ctx.textAlign='center';
 
     // ── 벨트 트랙 ──
