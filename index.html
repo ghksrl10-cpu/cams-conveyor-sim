@@ -706,6 +706,21 @@ function makeRows(li,si){
   }
   return[];
 }
+// ── 페이지 로드 즉시 localStorage 검증 (Firebase보다 먼저 실행) ──
+(function earlyRestore(){
+  try{
+    const key='conv_struct_2_0';
+    const saved=JSON.parse(localStorage.getItem(key)||'null');
+    if(!Array.isArray(saved)||saved.length<18)return;
+    const isSB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+    const mn=saved.filter(r=>!isSB(r));
+    const top=mn.slice(Math.ceil(mn.length/2));
+    if(top.length>=9&&top.every(r=>!(r.ct>0))){
+      console.log('[earlyRestore] 상단 CT 전부 0 → DEF_CPAD로 교체');
+      localStorage.setItem(key,JSON.stringify(DEF_CPAD));
+    }
+  }catch(e){}
+})();
 const state=LINE_DEF.map((l,li)=>l.subs.map((_,si)=>({rows:makeRows(li,si)})));
 let curLine=0,curSub=0;
 let scenarios=JSON.parse(localStorage.getItem('conv_scen4')||'[]');
