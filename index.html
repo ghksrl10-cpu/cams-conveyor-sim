@@ -2360,14 +2360,20 @@ function init2D(){
       if(pn>0&&j%(pn+1)===pn) continue; // 공피치 제외
       realSlots.push(s);
     }
-    // 오른쪽(진행된) 작업자부터 W1 배정
-    const rDesc=[...realSlots].reverse();
+    // 지그 번호로 작업자 고정 배정: 실제지그 j의 순번(공피치 제외) % 작업자수 = wi
+    const workerSlot=new Array(multiWorkers).fill(-1);
+    for(const s of realSlots){
+      const j=((s-advN%NSLOT)+NSLOT*100)%NSLOT;
+      const realIdx=pn>0?j-Math.floor(j/(pn+1)):j; // 공피치 제외한 실제 지그 순번
+      const wi=realIdx%multiWorkers;
+      if(workerSlot[wi]===-1) workerSlot[wi]=s; // 중복 방지
+    }
     let qOff=0;
     for(let wi=0;wi<multiWorkers;wi++){
       let wx,wy,lbl=`W${wi+1}`;
       const wcolor=`hsl(${20+wi*30},85%,58%)`;
-      if(wi<rDesc.length){
-        const s=rDesc[wi];
+      const s=workerSlot[wi];
+      if(s!==-1){
         // SUB에어백: 4공정(slot3) transit 중 SUB 경유 후 5공정으로 복귀
         // 동선: 4공정 체류 → (transit) SUB들렀다가 → 5공정 도착 → 5공정 체류 → 6공정...
         const subSlot=subAirX!==null?3:-1;
