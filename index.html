@@ -2053,17 +2053,22 @@ function init2D(){
     return bx(Math.min(3,NB-1));
   }
 
-  // ── 작업자 경로: 1공정 왼쪽 대기 → 1~6공정 → 복귀 로테이션 ──
+  // ── 작업자 경로: 1공정 왼쪽 대기 → 1~6공정(+SUB경유) → 복귀 로테이션 ──
   const slotW=BW/NB;
   const SY_W=BY+TW/2+55+28;
   const subAirX=subRows.length>0?subParentBotX(subRows[0]):null;
   const waypoints=[];
-  // 대기 waypoint: 1공정 왼쪽 바깥
-  waypoints.push({x:LX-slotW*1.1,y:WY_BOT,bIdx:-1,isSub:false,isQueue:true});
+  // 대기 waypoint: 캔버스 안쪽 (좌측 스키드 근처)
+  const queueX=Math.max(20, bx(0)-slotW*0.8);
+  waypoints.push({x:queueX,y:WY_BOT,bIdx:-1,isSub:false,isQueue:true});
   for(let i=0;i<MN;i++){
     waypoints.push({x:bx(i),y:WY_BOT,bIdx:i,isSub:false,isQueue:false});
+    // 4공정(bIdx=3) 다음에 SUB에어백 경유
+    if(i===3&&subAirX!==null){
+      waypoints.push({x:subAirX,y:SY_W,bIdx:-2,isSub:true,isQueue:false});
+    }
   }
-  const NWP=waypoints.length; // 대기1 + 공정MN
+  const NWP=waypoints.length; // 대기1 + 공정MN + SUB(있으면)
 
   let t0=null;
   function frame(ts){
@@ -2329,6 +2334,14 @@ function init2D(){
         ctx.fillText(`⏸ 대기 ${qLenT}대`,tx_(bnTop)+BW/NT*0.5,TY-TW/2-4);
       }
     }
+
+    // ── 대기 구역 표시 (1공정 왼쪽) ──
+    {const qWP=waypoints[0];
+    rr(qWP.x-18,qWP.y-16,36,32,4);
+    ctx.fillStyle='rgba(8,47,73,0.85)';ctx.fill();
+    ctx.strokeStyle='#0284c7';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='#38bdf8';ctx.font='bold 6px Malgun Gothic';ctx.textAlign='center';
+    ctx.fillText('대기',qWP.x,qWP.y-4);ctx.fillText('구역',qWP.x,qWP.y+5);}
 
     // ── 다공정 작업자: waypoints(SUB 경유) 동기화 ──
     // 공피치 대차에서는 작업자 이동 없음 — 실제 대차에서만 이동
