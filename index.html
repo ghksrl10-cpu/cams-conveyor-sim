@@ -2289,6 +2289,13 @@ function init2D(){
       const jlbl=isCorner?'↻':isKong?'공피치':'C/PAD지그';
       ctx.fillText(jlbl,0,isKong?2.5:0);
       if(!isCorner&&!isKong){ctx.font='bold 5px Malgun Gothic';ctx.fillText('스키드',0,6);}
+      // 지그 번호 표시 (옆에)
+      if(!isCorner){
+        ctx.fillStyle=isKong?'#64748b':'#93c5fd';
+        ctx.font=`bold 7px Malgun Gothic`;ctx.textAlign='left';
+        ctx.fillText(`#${j+1}`,jw2/2+2,-2);
+        ctx.textAlign='center';
+      }
       ctx.restore();
     }
 
