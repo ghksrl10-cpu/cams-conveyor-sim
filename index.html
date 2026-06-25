@@ -535,7 +535,7 @@
           if(k.startsWith('conv_struct')){
             try{
               const arr=typeof v==='string'?JSON.parse(v):v;
-              if(!Array.isArray(arr)||arr.length<12){
+              if(!Array.isArray(arr)||arr.length<18){
                 console.warn('Firestore 초기 데이터 행 수 부족, 무시함:',k,arr?.length);
                 return;
               }
@@ -558,7 +558,7 @@
           if(k.startsWith('conv_struct')){
             try{
               const arr=typeof v==='string'?JSON.parse(v):v;
-              if(!Array.isArray(arr)||arr.length<12){
+              if(!Array.isArray(arr)||arr.length<18){
                 console.warn('Firestore 데이터 행 수 부족, 무시함:',k,arr?.length);
                 return;
               }
@@ -618,36 +618,48 @@ const _C3T='카울바, 리저브, IBU, 릴레이, 정션박스, ICU, S/BELT, 초
 const _C3F='너트 10EA, 스크류 2EA, 육각 11EA, 융각 6EA';
 const _C3N='토크 관리, 이종·누락·미체결·바코드 스캔 누락 없을 것';
 const DEF_CPAD=[
-  {name:'1공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:6, workerSpan:6, ctSpan:6},
-  {name:'2공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'3공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'4공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'5공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'6공정',  task:'',   group:'A', fastener:'',   note:'',   empty:false, taskSpan:0, workerSpan:0, ctSpan:0},
-  {name:'7공정',  task:'클러스터, 오디오',              group:'', fastener:'', note:'', empty:false},
-  {name:'8공정',  task:'패드부착, AVN 조립',            group:'', fastener:'', note:'', empty:false},
-  {name:'9공정',  task:'퓨즈커버 조립, 글러브 박스 조립', group:'', fastener:'', note:'', empty:false},
-  {name:'10공정', task:'센터페시아 조립',               group:'', fastener:'', note:'', empty:false},
-  {name:'11공정', task:'',                              group:'', fastener:'', note:'', empty:true},
-  {name:'12공정', task:'전장검사',                      group:'', fastener:'', note:'', empty:false},
-  {name:'SUB03 에어백', task:'에어백 조립',             group:'SUB', fastener:'', note:'', empty:false},
-  {name:'센터페시아 SUB', task:'클러스터 페시아, 스위치, 에어덕트', group:'SUB', fastener:'', note:'', empty:false},
-  {name:'SUB1',   task:'에어덕트, USB 모듈',            group:'SUB', fastener:'', note:'', empty:false},
-  {name:'SUB2',   task:'AVN BRKT, LTE 모듈 (AVN 사양)', group:'SUB', fastener:'', note:'', empty:false},
+  // ─── 하단 공정 1~9공정 (NB=9) ───
+  {name:'1공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:6, workerSpan:6, ctSpan:6, workers:5, ct:0},
+  {name:'2공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0, workers:5, ct:0},
+  {name:'3공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0, workers:5, ct:0},
+  {name:'4공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0, workers:5, ct:0},
+  {name:'5공정',  task:_C3T, group:'A', fastener:_C3F, note:_C3N, empty:false, taskSpan:0, workerSpan:0, ctSpan:0, workers:5, ct:0},
+  {name:'6공정',  task:'',   group:'A', fastener:'',   note:'',   empty:false, taskSpan:0, workerSpan:0, ctSpan:0, workers:5, ct:0},
+  {name:'7공정',  task:'클러스터, 오디오',              group:'', fastener:'', note:'', empty:false, workers:1, ct:0},
+  {name:'8공정',  task:'패드부착, AVN 조립',            group:'', fastener:'', note:'', empty:false, workers:1, ct:150.9},
+  {name:'9공정',  task:'',                              group:'', fastener:'', note:'', empty:true,  workers:1, ct:0},
+  // ─── 상단 공정 10~18공정 (NT=9) ───
+  {name:'10공정', task:'',                              group:'', fastener:'', note:'', empty:true,  workers:1, ct:0},
+  {name:'11공정', task:'',                              group:'', fastener:'', note:'', empty:false, workers:1, ct:123.5},
+  {name:'12공정', task:'',                              group:'', fastener:'', note:'', empty:true,  workers:1, ct:0},
+  {name:'13공정', task:'',                              group:'', fastener:'', note:'', empty:false, workers:1, ct:94.2},
+  {name:'14공정', task:'',                              group:'', fastener:'', note:'', empty:true,  workers:1, ct:0},
+  {name:'15공정', task:'',                              group:'', fastener:'', note:'', empty:true,  workers:1, ct:0},
+  {name:'16공정', task:'',                              group:'', fastener:'', note:'', empty:false, workers:1, ct:78.6},
+  {name:'17공정', task:'',                              group:'', fastener:'', note:'', empty:false, workers:2, ct:165.2},
+  {name:'18공정', task:'',                              group:'', fastener:'', note:'', empty:true,  workers:1, ct:0},
+  // ─── SUB 공정 ───
+  {name:'SUB03 에어백',  task:'에어백 조립',                            group:'SUB', fastener:'', note:'', empty:false, workers:1, ct:0},
+  {name:'센터페시아 SUB', task:'클러스터 페시아, 스위치, 에어덕트',     group:'SUB', fastener:'', note:'', empty:false, workers:1, ct:0},
+  {name:'SUB1',          task:'에어덕트, USB 모듈',                     group:'SUB', fastener:'', note:'', empty:false, workers:1, ct:0},
+  {name:'SUB2',          task:'AVN BRKT, LTE 모듈 (AVN 사양)',          group:'SUB', fastener:'', note:'', empty:false, workers:1, ct:0},
 ];
 function makeRows(li,si){
   if(li<2) // 조립 1·2라인
     return DEF_LINE12.map((d,i)=>({conv:i+1,...d,empty:false,ct:0,workers:1,parallel:1}));
-  if(li===2&&si===0) // 조립 3라인 C/PAD
+  if(li===2&&si===0){ // 조립 3라인 C/PAD — DEF_CPAD 값 그대로 보존
     return DEF_CPAD.map((d,i)=>{
       const parseF=(pat)=>{const m=(d.fastener||'').match(pat);return m?parseInt(m[1]):0;};
-      return {conv:i+1,...d,empty:false,ct:0,workers:1,parallel:1,group:'',
+      const fShex=parseF(/S육각\s*(\d+)\s*EA/i)||parseF(/(?<![B-Z])육각\s*(\d+)\s*EA/i);
+      const fBhex=parseF(/B육각\s*(\d+)\s*EA/i)||parseF(/융각\s*(\d+)\s*EA/i);
+      return {conv:i+1, parallel:1, fNut:0, fScrew:0, fShex:0, fBhex:0,
+        ...d,  // DEF_CPAD 값 우선 (group, empty, ct, workers, taskSpan 등 보존)
         fNut:parseF(/너트\s*(\d+)\s*EA/i),
         fScrew:parseF(/스크류\s*(\d+)\s*EA/i),
-        fShex:parseF(/S육각\s*(\d+)\s*EA/i)||parseF(/(?<![B-Z])육각\s*(\d+)\s*EA/i),
-        fBhex:parseF(/B육각\s*(\d+)\s*EA/i)||parseF(/융각\s*(\d+)\s*EA/i)
+        fShex, fBhex
       };
     });
+  }
   return[];
 }
 const state=LINE_DEF.map((l,li)=>l.subs.map((_,si)=>({rows:makeRows(li,si)})));
