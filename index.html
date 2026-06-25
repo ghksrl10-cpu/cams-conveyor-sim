@@ -1831,14 +1831,23 @@ function init2D(){
   document.getElementById('sim2dPitch').textContent=pitch.toFixed(1);
 
   // ── 행 분류: 모든 비-SUB 행 포함 (taskSpan:0도 각각 스테이션) ──
-  // 데이터 이상 시 기본값 복구
-  if(!G().rows||G().rows.length<6){
+  const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+  // 데이터 이상 시 자동 복구 (행수 부족 OR 상단 공정 CT 전부 0)
+  (function autoRestore(){
+    if(!G().rows||G().rows.length<6){return _doRestore();}
+    const mn=G().rows.filter(r=>!isSUB(r));
+    const half=Math.ceil(mn.length/2);
+    const top=mn.slice(half);
+    // 상단 공정이 9개 이상인데 CT가 하나도 없으면 복구
+    if(top.length>=9&&top.every(r=>!(r.ct>0))){_doRestore();}
+  })();
+  function _doRestore(){
     const key='conv_struct_2_0';
     localStorage.setItem(key,JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));
     loadLineData();
+    if(typeof _simPushCloud==='function')setTimeout(_simPushCloud,500);
   }
   const allRows=G().rows;
-  const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
   const mainRows=allRows.filter(r=>!isSUB(r));
   const subRows=allRows.filter(r=>isSUB(r)&&((r.name||'').includes('에어백')||(r.task||'').includes('에어백')));
 
