@@ -453,17 +453,27 @@
     <div class="page-h">
       <button class="hamb btn" onclick="toggleNav(true)">☰</button>
       <h1>조립 3라인 C/PAD — 컨베어 2D 시뮬레이션</h1>
-      <div style="margin-left:auto;display:flex;gap:8px">
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}loadLineData();init2D();">🔄 불러오기</button>
-        <button class="btn warn" style="font-size:13px;padding:6px 14px" onclick="if(confirm('현재 데이터를 백업 후 기본값으로 초기화합니다. 계속할까요?')){const cur=localStorage.getItem('conv_struct_2_0');if(cur)localStorage.setItem('conv_struct_2_0_backup',cur);localStorage.setItem('conv_struct_2_0',JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));loadLineData();init2D();if(typeof _simPushCloud==='function')_simPushCloud();alert('백업 저장 완료. ↩ 백업복원 버튼으로 되돌릴 수 있습니다.');}">🔁 기본값 초기화</button>
-        <button class="btn" style="font-size:13px;padding:6px 14px;background:#1e3a5f" onclick="if(typeof _simRestoreBackup==='function')_simRestoreBackup();else{const b=localStorage.getItem('conv_struct_2_0_backup');if(!b){alert('백업 없음');return;}if(confirm('백업으로 복원?')){localStorage.setItem('conv_struct_2_0',b);loadLineData();init2D();}}">↩ 백업복원</button>
-        <button class="btn" style="font-size:13px;padding:6px 14px;color:#a78bfa;border-color:#4c1d95" onclick="recoverFromScenario()">📋 시나리오 복구</button>
-        <button class="btn" style="font-size:13px;padding:6px 14px;color:#f87171;border-color:#7f1d1d" onclick="if(confirm('저장된 로컬 데이터를 지우고 코드 기본값으로 복구합니다.')){localStorage.removeItem('conv_struct_2_0');loadLineData();init2D();alert('✅ 복구 완료!');}">🔄 기본값 복구</button>
-        <button class="btn" style="font-size:13px;padding:6px 14px;color:#f87171;border-color:#7f1d1d" onclick="recoverFromFirebase()">☁ 클라우드 복구</button>
+        <div style="position:relative" id="scenPickWrap">
+          <button class="btn" style="font-size:13px;padding:6px 14px;background:#1e2d1e;border-color:#166534;color:#4ade80" onclick="openScenPicker();event.stopPropagation()">📋 시나리오 ▼</button>
+          <div id="scenPickMenu" style="display:none;position:absolute;left:0;top:calc(100% + 4px);background:#1a1d24;border:1px solid #2a2d35;border-radius:8px;min-width:260px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,0.6);max-height:320px;overflow-y:auto"></div>
+        </div>
+        <div style="position:relative" id="recoverDropWrap">
+          <button class="btn" style="font-size:13px;padding:6px 14px;background:#1e3a5f" onclick="const m=document.getElementById('recoverMenu');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation()">🛠 복구 ▼</button>
+          <div id="recoverMenu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#1a1d24;border:1px solid #2a2d35;border-radius:8px;min-width:160px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,0.5)">
+            <button class="btn" style="display:block;width:100%;text-align:left;font-size:12px;padding:8px 14px;border:none;border-radius:0;border-bottom:1px solid #2a2d35" onclick="document.getElementById('recoverMenu').style.display='none';if(typeof _simRestoreBackup==='function')_simRestoreBackup();else{const b=localStorage.getItem('conv_struct_2_0_backup');if(!b){alert('백업 없음');return;}if(confirm('백업으로 복원?')){localStorage.setItem('conv_struct_2_0',b);loadLineData();init2D();}}">↩ 백업복원</button>
+            <button class="btn" style="display:block;width:100%;text-align:left;font-size:12px;padding:8px 14px;border:none;border-radius:0;border-bottom:1px solid #2a2d35;color:#a78bfa" onclick="document.getElementById('recoverMenu').style.display='none';recoverFromScenario()">📋 시나리오 복구</button>
+            <button class="btn" style="display:block;width:100%;text-align:left;font-size:12px;padding:8px 14px;border:none;border-radius:0;border-bottom:1px solid #2a2d35;color:#f87171" onclick="document.getElementById('recoverMenu').style.display='none';recoverFromFirebase()">☁ 클라우드 복구</button>
+            <button class="btn warn" style="display:block;width:100%;text-align:left;font-size:12px;padding:8px 14px;border:none;border-radius:0;border-bottom:1px solid #2a2d35" onclick="document.getElementById('recoverMenu').style.display='none';if(confirm('현재 데이터를 백업 후 기본값으로 초기화합니다. 계속할까요?')){const cur=localStorage.getItem('conv_struct_2_0');if(cur)localStorage.setItem('conv_struct_2_0_backup',cur);localStorage.setItem('conv_struct_2_0',JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));loadLineData();init2D();if(typeof _simPushCloud==='function')_simPushCloud();alert('백업 저장 완료.');}">🔁 기본값 초기화</button>
+            <button class="btn" style="display:block;width:100%;text-align:left;font-size:12px;padding:8px 14px;border:none;border-radius:0;color:#f87171" onclick="document.getElementById('recoverMenu').style.display='none';if(confirm('저장된 로컬 데이터를 지우고 코드 기본값으로 복구합니다.')){localStorage.removeItem('conv_struct_2_0');loadLineData();init2D();alert('✅ 복구 완료!');}">🔄 기본값 복구</button>
+          </div>
+        </div>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="exportSimConfig()">💾 내보내기</button>
         <label class="btn" style="font-size:13px;padding:6px 14px;cursor:pointer">📂 가져오기<input type="file" accept=".json" style="display:none" onchange="importSimConfig(this)"></label>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="gotoSim(2)">📋 공정입력</button>
       </div>
+      <script>document.addEventListener('click',()=>{['recoverMenu','scenPickMenu'].forEach(id=>{const m=document.getElementById(id);if(m)m.style.display='none';});});</script>
     </div>
     <div style="padding:12px 16px 16px">
       <canvas id="cv2d" style="display:block;width:100%;border-radius:8px;background:#0f172a"></canvas>
@@ -933,13 +943,55 @@ function render(){
   document.getElementById('procStat').textContent=s.rows.length+'행 · 유효 '+s.rows.filter(r=>!r.empty).length+'개';
   const tbody=document.getElementById('mainBody');
   tbody.innerHTML='';
-  s.rows.forEach((r,i)=>{
-    const span=r.taskSpan||1;
-    const isGroup=span>1; // 다공정 합산 그룹 여부
+  // 표시 순서: 메인 4공정까지 → SUB에어백 → 나머지 메인 → 나머지 SUB
+  const _isSub=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+  const _isAir=r=>_isSub(r)&&((r.name||'').includes('에어백')||(r.task||'').includes('에어백'));
+  const _mainIdx=[],_airIdx=[],_otherSubIdx=[];
+  s.rows.forEach((r,i)=>{if(_isAir(r))_airIdx.push(i);else if(_isSub(r))_otherSubIdx.push(i);else _mainIdx.push(i);});
+  const _displayOrder=[..._mainIdx.slice(0,4),..._airIdx,..._mainIdx.slice(4),..._otherSubIdx];
+  // SUB 행이 rowspan 그룹 중간에 삽입될 때 컬럼 밀림 방지 — 동적 span 재계산
+  const _drows=_displayOrder.map(idx=>s.rows[idx]);
+  function _respan(key){
+    const eff=_drows.map(r=>r[key]!=null?r[key]:1);
+    let p=0;
+    while(p<_drows.length){
+      if(_isSub(_drows[p])){p++;continue;}
+      const orig=_drows[p][key]!=null?_drows[p][key]:1;
+      if(orig>1){
+        let sp=1;
+        for(let q=p+1;q<_drows.length;q++){
+          if(_isSub(_drows[q]))break;
+          if((_drows[q][key]||1)===0)sp++;else break;
+        }
+        eff[p]=sp;
+        for(let q=p+1;q<p+sp;q++)eff[q]=0;
+        p+=sp;
+        // SUB 이후 나머지 span-0 그룹 재시작
+        if(p<_drows.length&&_isSub(_drows[p])){
+          p++;
+          if(p<_drows.length&&!_isSub(_drows[p])&&(_drows[p][key]!=null?_drows[p][key]:1)===0){
+            let rs=0,rs0=p;
+            while(p<_drows.length&&!_isSub(_drows[p])&&(_drows[p][key]!=null?_drows[p][key]:1)===0){rs++;p++;}
+            if(rs>0){eff[rs0]=rs;for(let q=rs0+1;q<rs0+rs;q++)eff[q]=0;}
+          }
+        }
+      }else if(orig===0){eff[p]=1;p++;}
+      else p++;
+    }
+    return eff;
+  }
+  const _effTS=_respan('taskSpan');
+  const _effCS=_respan('ctSpan');
+  const _effWS=_respan('workerSpan');
+  _displayOrder.forEach((i,di)=>{
+    const r=s.rows[i];
+    const origSpan=r.taskSpan||1; // 계산용 원본
+    const span=_effTS[di]||1;     // 렌더링용 재계산
+    const isGroup=origSpan>1; // 다공정 합산 그룹 여부
     // 다공정 그룹: 입력 C/T = 한 작업자의 총 C/T → 나누지 않음
     // 개별 공정: 실C/T = C/T ÷ 인원
-    const groupCT=isGroup ? r.ct : r.ct;
-    const effectivePitch=pitch*span; // 작업자 허용시간 = 공피치 × 공정 수
+    const groupCT=r.ct;
+    const effectivePitch=pitch*origSpan; // 작업자 허용시간 = 공피치 × 공정 수
     const realCT=groupCT>0?(isGroup?groupCT:groupCT/(r.workers||1)):0;
     const load=realCT>0?realCT/effectivePitch*100:0;
     const slackPct=realCT>0?((effectivePitch-realCT)/effectivePitch*100).toFixed(1):null;
@@ -957,19 +1009,19 @@ function render(){
       </td>
       <td class="${emC}" style="position:sticky;left:54px;z-index:1;background:${isSub?'#1a0a2e':r.empty?'var(--hd2)':'var(--bg)'}"><input value="${esc(r.name)}" oninput="upd(${i},'name',this.value)" style="font-weight:700;width:100%"></td>
       <td class="${emC}"><input value="${esc(r.group||'')}" oninput="upd(${i},'group',this.value)" placeholder="—" style="text-align:center;font-weight:700;color:var(--warn)"></td>
-      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea style="width:100%;height:${span>1?span*52:52}px;max-height:${span>1?span*52:52}px;background:transparent;border:none;color:inherit;font:inherit;resize:none;padding:2px 4px;overflow-y:auto;font-size:12px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
+      ${_effTS[di]===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea style="width:100%;height:${span>1?span*52:52}px;max-height:${span>1?span*52:52}px;background:transparent;border:none;color:inherit;font:inherit;resize:none;padding:2px 4px;overflow-y:auto;font-size:12px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
       <td style="background:${r.empty?'#1a1040':'var(--hd2)'};text-align:center"><input type="checkbox" ${r.empty?'checked':''} onchange="toggleEmpty(${i},this.checked)"></td>
-      ${r.ctSpan===0?'':`<td class="${r.empty?'off':ctCls}" ${(r.ctSpan||1)>1?`rowspan="${r.ctSpan}" style="vertical-align:middle;padding:2px 4px"`:'style="padding:2px 4px"'}><div style="display:flex;align-items:center;gap:2px"><input type="number" value="${r.ct||''}" min="0" step="0.1" onchange="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0" style="flex:1;width:0;min-width:0;text-align:right;font-size:13px"><button class="btn" onclick="openCTCalc(${i})" style="padding:2px 4px;font-size:14px;line-height:1;flex-shrink:0;background:transparent;border-color:#334155" ${r.empty?'disabled':''}>🧮</button></div></td>`}
-      ${r.workerSpan===0?'':`<td class="${offC}" ${(r.workerSpan||1)>1?`rowspan="${r.workerSpan}" style="vertical-align:middle;text-align:center"`:''}><input type="number" value="${r.workers}" min="0" onchange="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>`}
-      ${r.taskSpan===0?'':`<td class="val ${r.empty?'off':ctCls}" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${r.empty?'var(--mut)':''}"`:''}>${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>`}
-      ${r.taskSpan===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
-      ${r.taskSpan===0?'':(curLine===2?`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle;padding:6px 8px"`:'style="padding:6px 8px"'}><div style="display:flex;flex-direction:column;gap:5px">
+      ${_effCS[di]===0?'':`<td class="${r.empty?'off':ctCls}" ${_effCS[di]>1?`rowspan="${_effCS[di]}" style="vertical-align:middle;padding:2px 4px"`:'style="padding:2px 4px"'}><div style="display:flex;align-items:center;gap:2px"><input type="number" value="${r.ct||''}" min="0" step="0.1" onchange="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0" style="flex:1;width:0;min-width:0;text-align:right;font-size:13px"><button class="btn" onclick="openCTCalc(${i})" style="padding:2px 4px;font-size:14px;line-height:1;flex-shrink:0;background:transparent;border-color:#334155" ${r.empty?'disabled':''}>🧮</button></div></td>`}
+      ${_effWS[di]===0?'':`<td class="${offC}" ${_effWS[di]>1?`rowspan="${_effWS[di]}" style="vertical-align:middle;text-align:center"`:''}><input type="number" value="${r.workers}" min="0" onchange="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>`}
+      ${_effTS[di]===0?'':`<td class="val ${r.empty?'off':ctCls}" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${r.empty?'var(--mut)':''}"`:''}>${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>`}
+      ${_effTS[di]===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
+      ${_effTS[di]===0?'':(curLine===2?`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle;padding:6px 8px"`:'style="padding:6px 8px"'}><div style="display:flex;flex-direction:column;gap:5px">
         <div style="display:flex;align-items:center;gap:2px"><span style="font-size:11px;width:30px;color:var(--mut)">너트</span><input type="number" value="${r.fNut||0}" min="0" onchange="updNum(${i},'fNut',+this.value)" style="width:38px;text-align:right;font-size:12px" ${r.empty?'disabled':''}><span style="font-size:10px;color:var(--mut)">EA</span></div>
         <div style="display:flex;align-items:center;gap:2px"><span style="font-size:11px;width:30px;color:var(--mut)">스크류</span><input type="number" value="${r.fScrew||0}" min="0" onchange="updNum(${i},'fScrew',+this.value)" style="width:38px;text-align:right;font-size:12px" ${r.empty?'disabled':''}><span style="font-size:10px;color:var(--mut)">EA</span></div>
         <div style="display:flex;align-items:center;gap:2px"><span style="font-size:11px;width:30px;color:var(--mut)">S육각</span><input type="number" value="${r.fShex||0}" min="0" onchange="updNum(${i},'fShex',+this.value)" style="width:38px;text-align:right;font-size:12px" ${r.empty?'disabled':''}><span style="font-size:10px;color:var(--mut)">EA</span></div>
         <div style="display:flex;align-items:center;gap:2px"><span style="font-size:11px;width:30px;color:var(--mut)">B육각</span><input type="number" value="${r.fBhex||0}" min="0" onchange="updNum(${i},'fBhex',+this.value)" style="width:38px;text-align:right;font-size:12px" ${r.empty?'disabled':''}><span style="font-size:10px;color:var(--mut)">EA</span></div>
       </div></td>`:`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><input value="${esc(r.fastener||'')}" oninput="upd(${i},'fastener',this.value)" placeholder="너트/스크류/육각 등"></td>`)}
-      ${r.taskSpan===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea style="width:100%;height:${span>1?span*52:52}px;max-height:${span>1?span*52:52}px;background:transparent;border:none;color:inherit;font:inherit;resize:none;padding:2px 4px;overflow-y:auto;font-size:12px" oninput="upd(${i},'note',this.value);autoSaveCT()" placeholder="관리항목">${esc(r.note)}</textarea></td>`}
+      ${_effTS[di]===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea style="width:100%;height:${span>1?span*52:52}px;max-height:${span>1?span*52:52}px;background:transparent;border:none;color:inherit;font:inherit;resize:none;padding:2px 4px;overflow-y:auto;font-size:12px" oninput="upd(${i},'note',this.value);autoSaveCT()" placeholder="관리항목">${esc(r.note)}</textarea></td>`}
       <td style="text-align:center;white-space:nowrap;vertical-align:middle">
         <button class="btn sml" onclick="insertRow(${i})" style="margin-bottom:3px;width:52px">+ 삽입</button><br>
         <button class="btn sml" onclick="openDist(${i})" style="margin-bottom:3px;width:52px">🔀 배분</button><br>
@@ -1549,8 +1601,7 @@ function saveScenario(){
   let bnCT=0;const pc=active.map(r=>{const sp=(r.taskSpan||1);const ep=pitch*sp;const rt=(sp>1)?r.ct:r.ct/(r.parallel||1)/(r.workers||1);if(rt>bnCT)bnCT=rt;return rt;});
   const uph=bnCT>0?Math.round(3600/bnCT):0,daily=bnCT>0?Math.floor(wm*60/bnCT):0;
   const lb=active.length>0?pc.reduce((a,v)=>a+v,0)/(bnCT*active.length)*100:0;
-  // 공정별 C/T 스냅샷 (3라인만)
-  const rowsSnap=(curLine===2&&curSub===0)?JSON.parse(JSON.stringify(s.rows)):null;
+  const rowsSnap=JSON.parse(JSON.stringify(s.rows));
   scenarios.push({id:Date.now(),name,lbl,ratio:n+':1',base,pitch:pitch.toFixed(1),cnt:active.length,uph,daily,lb:lb.toFixed(1),bnCT:bnCT.toFixed(1),at:new Date().toLocaleString('ko'),rows:rowsSnap,line:curLine,sub:curSub});
   localStorage.setItem('conv_scen4',JSON.stringify(scenarios));
   if(typeof _simPushCloud==='function')_simPushCloud();
@@ -1571,7 +1622,7 @@ function renderScen(){
       <td class="${s.daily===mD?'best':''}">${s.daily.toLocaleString()}</td>
       <td class="${+s.lb===mL?'best':''}">${s.lb}%</td>
       <td style="text-align:center;white-space:nowrap">
-        ${s.rows?`<button class="btn sml" style="background:#1e3a5f;color:#60a5fa;margin-right:4px" onclick="apply2DScen(${s.id})">📺 2D</button>`:''}
+        <button class="btn sml" style="background:#1e3a5f;color:#60a5fa;margin-right:4px" onclick="apply2DScen(${s.id})">📺 2D</button>
         <button class="btn sml warn" onclick="delScen(${s.id})">삭제</button>
       </td>
     </tr>`;
@@ -1581,9 +1632,27 @@ function renderScen(){
 }
 function delScen(id){scenarios=scenarios.filter(s=>s.id!==id);localStorage.setItem('conv_scen4',JSON.stringify(scenarios));renderScen();}
 function clearScen(){if(!confirm('모두 삭제?'))return;scenarios=[];localStorage.setItem('conv_scen4','[]');renderScen();}
+function openScenPicker(){
+  const menu=document.getElementById('scenPickMenu');
+  if(menu.style.display==='block'){menu.style.display='none';return;}
+  const list=scenarios.filter(s=>s.rows);
+  if(!list.length){menu.innerHTML='<div style="padding:12px 14px;color:#64748b;font-size:12px">저장된 2D 시나리오 없음</div>';menu.style.display='block';return;}
+  let html='';
+  list.slice().reverse().forEach(s=>{
+    html+=`<div style="padding:10px 14px;border-bottom:1px solid #2a2d35;cursor:pointer;transition:background 0.15s"
+      onmouseover="this.style.background='#1e2d3d'" onmouseout="this.style.background=''"
+      onclick="document.getElementById('scenPickMenu').style.display='none';apply2DScen(${s.id})">
+      <div style="font-weight:700;color:#e2e8f0;font-size:13px">${esc(s.name)}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">${s.at} &nbsp;|&nbsp; 공피치 ${s.ratio||'-'} &nbsp;|&nbsp; 일 ${s.daily}대</div>
+    </div>`;
+  });
+  menu.innerHTML=html;
+  menu.style.display='block';
+}
 function apply2DScen(id){
   const sc=scenarios.find(s=>s.id===id);
-  if(!sc||!sc.rows)return;
+  if(!sc){return;}
+  if(!sc.rows){alert('이 시나리오는 공정 데이터 없이 저장됐습니다.\n다시 저장하면 2D로 볼 수 있습니다.');return;}
   state[sc.line||2][sc.sub||0].rows=JSON.parse(JSON.stringify(sc.rows));
   localStorage.setItem('conv_struct_'+(sc.line||2)+'_'+(sc.sub||0),JSON.stringify(sc.rows));
   curLine=sc.line||2;curSub=sc.sub||0;
@@ -1804,10 +1873,8 @@ function easeIO(t){return t<0.5?2*t*t:-1+(4-2*t)*t;}
 
 function renderOverloadPanel(){
   const base=+document.getElementById('baseProd').value||205;
-  const pn=+document.getElementById('pitchRatio').value||0;
+  const curPn=+document.getElementById('pitchRatio').value||0;
   const wm=+document.getElementById('workMin').value||460;
-  const prod=pn===0?base:Math.round(base*pn/(pn+1));
-  const pitch=wm*60/prod;
   const allRows=G().rows;
   const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
   const mainRows=allRows.filter(r=>!isSUB(r));
@@ -1816,88 +1883,140 @@ function renderOverloadPanel(){
   if(mainRows.length>0&&mainRows[0].taskSpan>1)multiSpan=mainRows[0].taskSpan;
   else{let cnt=0;for(const r of mainRows){if(r.taskSpan===0)cnt++;else break;}multiSpan=1+cnt;}
   const MN=Math.min(multiSpan,Math.ceil(mainRows.length/2));
-  const multiWorkers=mainRows[0]?.workers||1;
   const grpCTTotal=mainRows.slice(0,MN).reduce((s,r)=>s+(r.ct||0),0)+subRows.reduce((s,r)=>s+(r.ct||0),0);
-  const grpEffCT=MN>0&&multiWorkers>0?grpCTTotal/multiWorkers:0;
-  const half=Math.ceil(mainRows.length/2);
-  const singleRows=[...mainRows.slice(MN,half),...mainRows.slice(half)];
-
-  const items=[];
-  // 다공정 그룹
-  if(grpEffCT>0){
-    const overload=grpEffCT>pitch;
-    const dailyActual=Math.floor(wm*60/grpEffCT);
-    const shortage=prod-dailyActual;
-    items.push({name:`다공정(1~${MN}공정+SUB) ${multiWorkers}인`,ct:grpEffCT,overload,shortage,
-      minus1:multiWorkers>1?Math.floor(wm*60/(grpCTTotal/(multiWorkers-1))):null,
-      type:'multi',workers:multiWorkers,grpCT:grpCTTotal});
-  }
-  // 단공정들
-  singleRows.forEach(r=>{
-    const ct=r.ct||0;if(!ct)return;
-    const overload=ct>pitch;
-    const dailyActual=Math.floor(wm*60/ct);
-    const shortage=prod-dailyActual;
-    const w=r.workers||1;
-    // 인원 -1 시 영향 (동시작업자이므로 C/T 변화없음 → 단 공정 삭제 시)
-    items.push({name:r.name||'공정',ct,overload,shortage,workers:w,type:'single'});
-  });
 
   const panel=document.getElementById('overloadPanel');
   const content=document.getElementById('overloadContent');
   const badge=document.getElementById('overloadBadge');
-  const overloadItems=items.filter(x=>x.overload);
   panel.style.display='block';
-  badge.innerHTML=overloadItems.length>0
-    ?`<span style="color:#ef4444;font-weight:700">❌ 과부하 ${overloadItems.length}곳</span>`
-    :`<span style="color:#22c55e;font-weight:700">✅ 전 공정 정상</span>`;
 
-  if(items.length===0){content.innerHTML='<span style="color:#64748b">C/T 데이터가 없습니다.</span>';return;}
+  if(grpCTTotal<=0){
+    badge.innerHTML='<span style="color:#64748b">C/T 데이터 없음</span>';
+    content.innerHTML='<span style="color:#64748b">C/T 데이터가 없습니다.</span>';
+    return;
+  }
 
-  let html=`<table style="width:100%;border-collapse:collapse;font-size:12px">
-    <tr style="background:#20232b;color:#94a3b8">
-      <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #2a2d35">공정</th>
-      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">유효C/T</th>
-      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">피치</th>
-      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">부하율</th>
-      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">현재 생산가능</th>
-      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">납품 부족</th>
-      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">인원-1명 시</th>
-    </tr>`;
+  // 공피치 시나리오: pn=0 ~ 10
+  const pitchFull=wm*60/base;
+  const scenarios=[];
+  for(let pn=0;pn<=10;pn++){
+    const prod=pn===0?base:Math.round(base*pn/(pn+1));
+    const pitchEff=pn===0?pitchFull:pitchFull*(pn+1)/pn;
+    const minW=Math.ceil(grpCTTotal/pitchEff);
+    const load=grpCTTotal/(minW*pitchEff)*100;
+    const diff=prod-base;
+    scenarios.push({pn,prod,pitchEff,minW,load,diff});
+  }
 
-  items.forEach(x=>{
-    const load=(x.ct/pitch*100).toFixed(1);
-    const loadColor=x.overload?'#ef4444':+load>85?'#f59e0b':'#22c55e';
-    const dailyOk=Math.floor(wm*60/x.ct);
-    const shortageStr=x.shortage>0?`<span style="color:#ef4444;font-weight:700">-${x.shortage}대</span>`:`<span style="color:#22c55e">+${Math.abs(x.shortage)}대 여유</span>`;
-    // 인원 -1
-    let minus1Str='-';
-    if(x.type==='multi'&&x.minus1!==null){
-      const s=prod-x.minus1;
-      minus1Str=s>0?`<span style="color:#ef4444;font-weight:700">${x.minus1}대 (−${s}대 부족)</span>`:`<span style="color:#22c55e">${x.minus1}대 (여유)</span>`;
-    } else if(x.type==='single'){
-      minus1Str='<span style="color:#64748b">동시작업 불변</span>';
-    }
-    html+=`<tr style="border-bottom:1px solid #1e2128;${x.overload?'background:#2d0a0a':''}">
-      <td style="padding:6px 8px;font-weight:700;color:${x.overload?'#f87171':'#e2e8f0'}">${x.name}</td>
-      <td style="padding:6px 8px;text-align:center;color:#60a5fa">${x.ct.toFixed(1)}초</td>
-      <td style="padding:6px 8px;text-align:center;color:#94a3b8">${pitch.toFixed(1)}초</td>
-      <td style="padding:6px 8px;text-align:center;font-weight:700;color:${loadColor}">${load}%</td>
-      <td style="padding:6px 8px;text-align:center">${dailyOk}대/일</td>
-      <td style="padding:6px 8px;text-align:center">${shortageStr}</td>
-      <td style="padding:6px 8px;text-align:center">${minus1Str}</td>
-    </tr>`;
-  });
-  html+='</table>';
+  // 캠스 UPH: 1인 평균 생산량 기준
+  const perPerson=+(document.getElementById('perPersonProd')||{}).value||35;
+  const camsSc=scenarios.map(sc=>({
+    ...sc,
+    camsMinW:Math.ceil(sc.prod/perPerson),
+    camsProd:Math.ceil(sc.prod/perPerson)*perPerson,
+    camsDiff:Math.ceil(sc.prod/perPerson)*perPerson-base
+  }));
 
-  // 요약
-  if(overloadItems.length>0){
-    const worst=overloadItems.sort((a,b)=>b.ct-a.ct)[0];
-    html+=`<div style="margin-top:10px;padding:10px 12px;background:#2d0a0a;border:1px solid #7f1d1d;border-radius:8px;font-size:13px">
-      ❌ <b style="color:#f87171">병목: ${worst.name}</b> — 현재 최대 <b style="color:#f87171">${Math.floor(wm*60/worst.ct)}대/일</b> 생산 가능.
-      목표 ${prod}대 대비 <b style="color:#ef4444">하루 ${prod-Math.floor(wm*60/worst.ct)}대 납품 부족</b> 발생.
+  const curScen=scenarios[Math.min(curPn,10)]||scenarios[0];
+  const ok=curScen.diff>=0;
+  badge.innerHTML=ok
+    ?`<span style="color:#22c55e;font-weight:700">✅ 납품 가능 (여유 ${curScen.diff}대/일)</span>`
+    :`<span style="color:#ef4444;font-weight:700">❌ 납품 부족 ${Math.abs(curScen.diff)}대/일</span>`;
+
+  // 6명이 필요해지는 첫 pn 찾기
+  const firstSix=scenarios.find(sc=>sc.minW>=6);
+
+  const fixedW=fixedWSaved>0?fixedWSaved:0;
+  function renderTable(scList,title,color,isCtBased){
+    const showFixed=fixedW>0;
+    let t=`<div style="margin:0 0 6px;font-size:12px;font-weight:700;color:${color}">${title}</div>`;
+    t+=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+      <tr style="background:#20232b;color:#94a3b8">
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">공피치<br><span style="font-weight:400;font-size:10px">공:실제</span></th>
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">UPH</th>
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">피치<br><span style="font-weight:400;font-size:10px">유효주기</span></th>
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">최소<br>작업자</th>
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">부하율</th>
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">일 생산량</th>
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">인당<br><span style="font-weight:400;font-size:10px">대/인/일</span></th>
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">고객사 대비</th>
+        ${showFixed?`<th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35;border-left:2px solid #fb923c;color:#fb923c">${fixedW}명<br><span style="font-weight:400;font-size:10px">생산량</span></th>
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35;color:#fb923c">${fixedW}명<br><span style="font-weight:400;font-size:10px">부하율</span></th>`:''}
+      </tr>`;
+    let prevW=null;
+    scList.forEach(sc=>{
+      const isCur=sc.pn===curPn;
+      const w=isCtBased?sc.minW:sc.camsMinW;
+      const prod=sc.prod;
+      const diff=sc.diff;
+      const uph=Math.round(sc.prod*60/wm);
+      const perHead=w>0?Math.round(prod/w):0;
+      const workerChanged=prevW!==null&&w!==prevW;
+      prevW=w;
+      const is6boundary=isCtBased&&sc.pn===firstSix?.pn;
+      const loadColor=sc.load>=95?'#ef4444':sc.load>=85?'#f59e0b':'#22c55e';
+      const diffStr=diff>=0
+        ?`<span style="color:#22c55e;font-weight:700">+${diff}대</span>`
+        :`<span style="color:#ef4444;font-weight:700">${diff}대</span>`;
+      const rowBg=isCur?'background:#0f2940;':(diff<0?'background:#160808;':'');
+      const leftBorder=isCur?'border-left:3px solid #0284c7;':is6boundary?'border-left:3px solid #ef4444;':'border-left:3px solid transparent;';
+      const topBorder=workerChanged?'border-top:2px solid #334155;':'';
+      let fixedCell='';
+      if(showFixed){
+        const fProd=fixedW>=w?prod:Math.floor(wm*60*fixedW/grpCTTotal);
+        const fLoad=fixedW>0?Math.round(grpCTTotal/(fixedW*sc.pitchEff)*100):0;
+        const fDiff=fProd-base;
+        const fDiffStr=fDiff>=0?`<span style="color:#22c55e;font-weight:600">+${fDiff}</span>`:`<span style="color:#ef4444;font-weight:600">${fDiff}</span>`;
+        const fLoadColor=fLoad>=100?'#ef4444':fLoad>=85?'#f59e0b':'#22c55e';
+        const fProdColor=fixedW<w?'#f97316':'#e2e8f0';
+        fixedCell=`<td style="padding:5px 8px;text-align:center;border-left:2px solid #431407;font-weight:700;color:${fProdColor}">${fProd}대 <span style="font-size:10px;font-weight:400">${fDiffStr}</span></td>
+        <td style="padding:5px 8px;text-align:center;font-weight:700;color:${fLoadColor}">${fLoad}%</td>`;
+      }
+      t+=`<tr style="${rowBg}${leftBorder}${topBorder}border-bottom:1px solid #1e2128;">
+        <td style="padding:5px 8px;text-align:center;color:${isCur?'#38bdf8':is6boundary?'#fca5a5':'#cbd5e1'};font-weight:${isCur||is6boundary?'700':'400'}">${sc.pn===0?'없음':`1:${sc.pn}`}${isCur?' ◀':''}${is6boundary?' ⚠️':''}</td>
+        <td style="padding:5px 8px;text-align:center;color:#fbbf24;font-weight:700">${uph}</td>
+        <td style="padding:5px 8px;text-align:center;color:#60a5fa">${sc.pitchEff.toFixed(1)}초</td>
+        <td style="padding:5px 8px;text-align:center;font-weight:700;color:${w>=6?'#ef4444':w>=5?'#f59e0b':'#4ade80'}">${w}명</td>
+        <td style="padding:5px 8px;text-align:center;font-weight:700;color:${loadColor}">${sc.load.toFixed(0)}%</td>
+        <td style="padding:5px 8px;text-align:center;font-weight:700;color:#e2e8f0">${prod}대</td>
+        <td style="padding:5px 8px;text-align:center;color:#a78bfa;font-weight:700">${perHead}대</td>
+        <td style="padding:5px 8px;text-align:center">${diffStr}</td>
+        ${fixedCell}
+      </tr>`;
+    });
+    t+='</table>';
+    return t;
+  }
+
+  const perPersonSaved=+(document.getElementById('perPersonProd')||{}).value||35;
+  const fixedWSaved=+(document.getElementById('fixedWorkers')||{}).value||0;
+  const infoBar=`<div style="margin:12px 0 8px;font-size:11px;color:#94a3b8;display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+    <span>고객사 목표: <b style="color:#f8fafc">${base}대/일</b></span>
+    <span>총 C/T: <b style="color:#60a5fa">${grpCTTotal.toFixed(1)}초</b></span>
+    <span>가동: <b style="color:#f8fafc">${wm}분/일</b></span>
+    <span style="display:flex;align-items:center;gap:4px">1인 평균:
+      <input type="number" id="perPersonProd" value="${perPersonSaved}" min="1" max="300" step="1"
+        style="width:52px;padding:2px 4px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#fbbf24;font-weight:700;text-align:center;font-size:12px"
+        onchange="renderOverloadPanel()">
+      <span>대/인/일</span>
+    </span>
+    <span style="display:flex;align-items:center;gap:4px;border-left:1px solid #334155;padding-left:12px">지정 인원:
+      <input type="number" id="fixedWorkers" value="${fixedWSaved||''}" min="1" max="20" step="1" placeholder="–"
+        style="width:40px;padding:2px 4px;background:#1e293b;border:1px solid #475569;border-radius:4px;color:#fb923c;font-weight:700;text-align:center;font-size:12px"
+        onchange="renderOverloadPanel()">
+      <span>명</span>
+    </span>
+  </div>`;
+
+  let html=renderTable(scenarios,`📐 C/T 기반 분석 (1~${MN}공정+SUB에어백 총 ${grpCTTotal.toFixed(1)}초)`,'#60a5fa',true);
+  if(firstSix){
+    html+=`<div style="margin:8px 0;padding:6px 12px;background:#2d0a0a;border:1px solid #7f1d1d;border-radius:6px;font-size:12px;color:#fca5a5">
+      ⚠️ <b>공피치 1:${firstSix.pn} 이상</b>부터 최소 작업자 <b style="color:#ef4444">6명</b> 필요 (현재 5명 → 1명 증원 필요)
     </div>`;
   }
+  html+=infoBar;
+  html+=renderTable(camsSc,`🏭 캠스 UPH 기반 분석 (1인 평균 ${perPersonSaved}대/일 기준)`,'#a78bfa',false);
+
   content.innerHTML=html;
 }
 
@@ -1952,15 +2071,15 @@ function init2D(){
   const multiWorkers=botRows[0]?Math.max(1,botRows[0].workers||1):1;
 
   // ── 레이아웃 ──
-  const PAD=50, TY=82, BY=390;
+  const PAD=50, TY=82, BY=490;
   const LX=PAD, RX=W-PAD;
   const BW=RX-LX, BH=BY-TY;
-  const CR=34, TW=20;
-  const BBOXH=58, BPADY=24, TBOXH=58, TPADY=8;
+  const CR=42, TW=34;
+  const BBOXH=110, BPADY=24, TBOXH=110, TPADY=10;
   const BTOP=BY-TW/2-BBOXH-BPADY;  // 박스 위쪽 Y (벨트와 간격 확보)
   const TTOP=TY+TW/2+TPADY;
   const WY_BOT=BY+TW/2+22;      // 하단 작업자 Y (레일 아래)
-  const WY_TOP=TY-TW/2-14;      // 상단 작업자 Y (레일 위쪽 바깥)
+  const WY_TOP=TY-TW/2-38;      // 상단 작업자 Y (레일 위쪽 바깥)
   const bx=i=>LX+(i+0.5)*BW/NB;
   const tx_=i=>RX-(i+0.5)*BW/NT;
 
@@ -2028,7 +2147,7 @@ function init2D(){
     rad=rad||10;
     ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,rad,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='rgba(255,255,255,0.45)';ctx.lineWidth=1.5;ctx.stroke();
-    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(rad,8)}px Malgun Gothic`;ctx.textAlign='center';ctx.fillText(lbl,x,y+2.5);
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.min(rad+2,11)}px Malgun Gothic`;ctx.textAlign='center';ctx.fillText(lbl,x,y+3.5);
   }
 
   // ── SUB 부모 공정 위치 계산 ──
@@ -2118,21 +2237,16 @@ function init2D(){
     });
 
     // ── 하단 공정 박스 (6공정=2칸 너비) ──
-    const fs=NB>15?7:NB>11?8:NB>8?9:10;
+    const fs=NB>15?11:NB>11?12:NB>8?13:14;
     const slotW=BW/NB; // 기본 1칸 너비
     const topWQ=[],subWQ=[],botWQ=[]; // 작업자 지연 큐
-    let skipBot=false;
     for(let i=0;i<botRows.length;i++){
-      if(skipBot){skipBot=false;continue;}
       const r=botRows[i];
       const ct=r.ct||0,isM=i<MN,w=r.workers||0;
       const procNum=i+1;
       const isDaegi=r.empty||r.name==='대기'||(r.name===''&&!r.task&&!ct);
-      // 6공정이면 2칸 너비 (다음 슬롯 흡수)
-      const is6=(r.name==='6공정'||procNum===6)&&i+1<botRows.length;
-      const span=is6?2:1;
       const bx2=LX+i*slotW+1.5;
-      const bw2=slotW*span-3;
+      const bw2=slotW-3;
       const cx=bx2+bw2/2;
       // 다공정(isM)이면 이름이 "대기"여도 공정 박스로 표시
       const showDaegi=isDaegi&&!isM;
@@ -2140,44 +2254,43 @@ function init2D(){
       rr(bx2,BTOP,bw2,BBOXH,3);
       ctx.fillStyle=showDaegi?'#0f1f33':loadFill(ct);ctx.fill();
       ctx.strokeStyle=isM?'#f97316':(showDaegi?'#1e3a5f':loadStk(ct));ctx.lineWidth=isM?2:1.5;ctx.stroke();
-      ctx.fillStyle=isM?'#93c5fd':(showDaegi?'#475569':'#e2e8f0');ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
-      ctx.fillText(dispName,cx,BTOP+11);
+      ctx.fillStyle=isM?'#93c5fd':(showDaegi?'#94a3b8':'#e2e8f0');ctx.font=`bold ${fs}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillText(dispName,cx,BTOP+17);
       if(showDaegi){
-        ctx.fillStyle='#334155';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText('대기',cx,BTOP+22);
+        ctx.fillStyle='#64748b';ctx.font=`${Math.max(10,fs-1)}px Malgun Gothic`;ctx.fillText('대기',cx,BTOP+34);
       } else {
         const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
-        if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fs-1)}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+22);}
-        if(ct>0&&!isM){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+33);}
+        if(tk){ctx.fillStyle='#cbd5e1';ctx.font=`${Math.max(10,fs-1)}px Malgun Gothic`;ctx.fillText(tk,cx,BTOP+34);}
+        if(ct>0&&!isM){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fs}px Malgun Gothic`;ctx.fillText(ct+'초',cx,BTOP+53);}
         if(isM){
-          rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(249,115,22,0.18)';ctx.fill();
-          ctx.fillStyle='#f97316';ctx.font='bold 7px Malgun Gothic';ctx.fillText(multiWorkers+'인',cx,BTOP+48);
+          rr(cx-15,BTOP+74,30,16,4);ctx.fillStyle='rgba(249,115,22,0.25)';ctx.fill();
+          ctx.fillStyle='#f97316';ctx.font='bold 11px Malgun Gothic';ctx.fillText(multiWorkers+'인',cx,BTOP+87);
         } else if(w>0){
-          rr(cx-11,BTOP+39,22,11,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
-          ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,BTOP+48);
+          rr(cx-15,BTOP+74,30,16,4);ctx.fillStyle='rgba(22,163,74,0.2)';ctx.fill();
+          ctx.fillStyle='#4ade80';ctx.font='bold 11px Malgun Gothic';ctx.fillText(w+'인',cx,BTOP+87);
           botWQ.push({cx,w});
         }
       }
-      // ── 실시간 작업상태 (C/T 기반 개별 판단) ──
+      // ── 실시간 작업상태: 박스 하단 컬러 바 ──
       if(!showDaegi){
         const jAt=((i-advN%NSLOT)+NSLOT*100)%NSLOT;
         const onKong=pn>0&&(jAt%(pn+1))===pn;
-        const effCT=isM?grpEffCT:ct; // 다공정=그룹유효CT, 단공정=개별CT
+        const effCT=isM?grpEffCT:ct;
         const workFrac=pitch>0&&effCT>0?effCT/pitch:0;
-        const workDone=cycleEl/( 1-TR_F)>=workFrac; // 피치 내 작업 완료 여부
-        let stColor,stLabel;
-        if(isTransit){stColor='#f59e0b';stLabel='이동중';}
-        else if(onKong){stColor='#475569';stLabel='대기중';}
-        else if(effCT===0){stColor='#334155';stLabel='미설정';}
-        else if(workFrac>1){stColor='#ef4444';stLabel='과부하';}  // C/T > 피치
-        else if(workDone){stColor='#3b82f6';stLabel='완료대기';} // 끝나고 컨베어 대기
-        else{stColor='#22c55e';stLabel='작업중';}
-        ctx.beginPath();ctx.arc(bx2+6,BTOP+6,3.5,0,Math.PI*2);
-        ctx.fillStyle=stColor;ctx.fill();
-        ctx.fillStyle=stColor;ctx.font='bold 6px Malgun Gothic';ctx.textAlign='right';
-        ctx.fillText(stLabel,bx2+bw2-4,BTOP+9);
-        ctx.textAlign='center';
+        const workDone=cycleEl/(1-TR_F)>=workFrac;
+        let stColor,stBg,stLabel;
+        if(isTransit){stColor='#fff';stBg='#d97706';stLabel='이동중';}
+        else if(onKong){stColor='#fff';stBg='#334155';stLabel='대기중';}
+        else if(effCT===0){stColor='#94a3b8';stBg='#1e293b';stLabel='미설정';}
+        else if(workFrac>1){stColor='#fff';stBg='#dc2626';stLabel='⚡ 과부하';}
+        else if(workDone){stColor='#fff';stBg='#2563eb';stLabel='완료대기';}
+        else{stColor='#fff';stBg='#16a34a';stLabel='작업중';}
+        const barH=16,barY=BTOP+BBOXH-barH;
+        rr(bx2+1,barY,bw2-2,barH,3);
+        ctx.fillStyle=stBg;ctx.fill();
+        ctx.fillStyle=stColor;ctx.font='bold 10px Malgun Gothic';ctx.textAlign='center';
+        ctx.fillText(stLabel,cx,barY+12);
       }
-      if(is6)skipBot=true;
     }
     if(MN>0){
       const grpCT=botRows.slice(0,MN).reduce((s,r)=>s+(r.ct||0),0)
@@ -2192,7 +2305,7 @@ function init2D(){
     }
 
     // ── 상단 공정 박스 ──
-    const fst=NT>15?7:NT>11?8:NT>8?9:10;
+    const fst=NT>15?11:NT>11?12:NT>8?13:14;
     topRows.forEach((r,i)=>{
       const cx=tx_(i),tw2=BW/NT-3,tx2=RX-i*BW/NT-BW/NT+1.5;
       const ct=r.ct||0;
@@ -2202,38 +2315,37 @@ function init2D(){
       rr(tx2,TTOP,tw2,TBOXH,3);
       ctx.fillStyle=isDaegiT?'#0f1f33':loadFill(ct);ctx.fill();
       ctx.strokeStyle=isDaegiT?'#1e3a5f':loadStk(ct);ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle=isDaegiT?'#334155':'#e2e8f0';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
-      ctx.fillText(dispNameT,cx,TTOP+11);
+      ctx.fillStyle=isDaegiT?'#94a3b8':'#e2e8f0';ctx.font=`bold ${fst}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillText(dispNameT,cx,TTOP+17);
       if(isDaegiT){
-        ctx.fillStyle='#1e3a5f';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;ctx.fillText('대기',cx,TTOP+22);
+        ctx.fillStyle='#1e3a5f';ctx.font=`${Math.max(10,fst-1)}px Malgun Gothic`;ctx.fillText('대기',cx,TTOP+34);
       } else {
         const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,6);
-        if(tk){ctx.fillStyle='#64748b';ctx.font=`${Math.max(6,fst-1)}px Malgun Gothic`;ctx.fillText(tk,cx,TTOP+22);}
-        if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fst}px Malgun Gothic`;ctx.fillText(ct+'초',cx,TTOP+33);}
+        if(tk){ctx.fillStyle='#cbd5e1';ctx.font=`${Math.max(10,fst-1)}px Malgun Gothic`;ctx.fillText(tk,cx,TTOP+34);}
+        if(ct>0){ctx.fillStyle=loadStk(ct);ctx.font=`bold ${fst}px Malgun Gothic`;ctx.fillText(ct+'초',cx,TTOP+53);}
         const w=r.workers||0;
         if(w>0){
-          rr(cx-11,TTOP+42,22,12,3);ctx.fillStyle='rgba(22,163,74,0.15)';ctx.fill();
-          ctx.fillStyle='#4ade80';ctx.font='bold 7px Malgun Gothic';ctx.fillText(w+'인',cx,TTOP+52);
-          topWQ.push({cx,w}); // 지그 이후 그리기
+          rr(cx-15,TTOP+74,30,16,4);ctx.fillStyle='rgba(22,163,74,0.2)';ctx.fill();
+          ctx.fillStyle='#4ade80';ctx.font='bold 11px Malgun Gothic';ctx.fillText(w+'인',cx,TTOP+87);
+          topWQ.push({cx,w});
         }
-        // 상단 실시간 작업상태 (C/T 기반 개별 판단)
         const topSlot=NB+1+i;
         const jAtT=((topSlot-advN%NSLOT)+NSLOT*100)%NSLOT;
         const onKongT=pn>0&&(jAtT%(pn+1))===pn;
         const workFracT=pitch>0&&ct>0?ct/pitch:0;
         const workDoneT=cycleEl/(1-TR_F)>=workFracT;
-        let stColorT,stLabelT;
-        if(isTransit){stColorT='#f59e0b';stLabelT='이동중';}
-        else if(onKongT){stColorT='#475569';stLabelT='대기중';}
-        else if(ct===0){stColorT='#334155';stLabelT='미설정';}
-        else if(workFracT>1){stColorT='#ef4444';stLabelT='과부하';}
-        else if(workDoneT){stColorT='#3b82f6';stLabelT='완료대기';}
-        else{stColorT='#22c55e';stLabelT='작업중';}
-        ctx.beginPath();ctx.arc(tx2+6,TTOP+6,3.5,0,Math.PI*2);
-        ctx.fillStyle=stColorT;ctx.fill();
-        ctx.fillStyle=stColorT;ctx.font='bold 6px Malgun Gothic';ctx.textAlign='right';
-        ctx.fillText(stLabelT,tx2+tw2-4,TTOP+9);
-        ctx.textAlign='center';
+        let stColorT,stBgT,stLabelT;
+        if(isTransit){stColorT='#fff';stBgT='#d97706';stLabelT='이동중';}
+        else if(onKongT){stColorT='#fff';stBgT='#334155';stLabelT='대기중';}
+        else if(ct===0){stColorT='#94a3b8';stBgT='#1e293b';stLabelT='미설정';}
+        else if(workFracT>1){stColorT='#fff';stBgT='#dc2626';stLabelT='⚡ 과부하';}
+        else if(workDoneT){stColorT='#fff';stBgT='#2563eb';stLabelT='완료대기';}
+        else{stColorT='#fff';stBgT='#16a34a';stLabelT='작업중';}
+        const barHT=16,barYT=TTOP+TBOXH-barHT;
+        rr(tx2+1,barYT,tw2-2,barHT,3);
+        ctx.fillStyle=stBgT;ctx.fill();
+        ctx.fillStyle=stColorT;ctx.font='bold 10px Malgun Gothic';ctx.textAlign='center';
+        ctx.fillText(stLabelT,cx,barYT+12);
       }
     });
 
@@ -2253,13 +2365,14 @@ function init2D(){
       ctx.strokeStyle='#7c3aed66';ctx.lineWidth=1;ctx.setLineDash([3,3]);
       ctx.beginPath();ctx.moveTo(sx,BY+TW/2+1);ctx.lineTo(sx,SY);ctx.stroke();ctx.setLineDash([]);
       // SUB 박스
-      rr(sx-subSW/2,SY,subSW,52,4);
+      rr(sx-subSW/2,SY,subSW,68,4);
       ctx.fillStyle='#1a0a2e';ctx.fill();ctx.strokeStyle='#7c3aed';ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
-      ctx.fillText((r.name||'SUB').slice(0,10),sx,SY+14);
+      ctx.fillStyle='#a78bfa';ctx.font='bold 11px Malgun Gothic';ctx.textAlign='center';
+      ctx.fillText((r.name||'SUB').slice(0,10),sx,SY+16);
       const tk=(r.task||'').split(/[,、\s]/)[0].trim().slice(0,10);
-      if(tk){ctx.fillStyle='#7c3aed';ctx.font='7px Malgun Gothic';ctx.fillText(tk,sx,SY+26);}
-      if(ct>0){ctx.fillStyle='#a78bfa';ctx.font='bold 8px Malgun Gothic';ctx.fillText(ct+'초',sx,SY+40);}
+      if(tk){ctx.fillStyle='#7c3aed';ctx.font='9px Malgun Gothic';ctx.fillText(tk,sx,SY+30);}
+      if(ct>0){ctx.fillStyle='#c4b5fd';ctx.font='bold 11px Malgun Gothic';ctx.fillText(ct+'초',sx,SY+48);}
+      if(!ct){ctx.fillStyle='#4c1d95';ctx.font='9px Malgun Gothic';ctx.fillText('C/T 미입력',sx,SY+48);}
       subWQ.push({sx}); // SUB 작업자 지연 큐
     });
 
@@ -2285,24 +2398,39 @@ function init2D(){
       rr(-jw2/2,-jh2/2,jw2,jh2,3);
       ctx.fillStyle=isCorner?'#1e3a5f':isKong?'#1e293b':'#1d4ed8';ctx.fill();
       ctx.strokeStyle=isCorner?'#0ea5e9':isKong?'#475569':'#60a5fa';ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle=isCorner?'#67e8f9':isKong?'#64748b':'#bfdbfe';ctx.font=`bold ${isCorner?6:7}px Malgun Gothic`;ctx.textAlign='center';
+      ctx.fillStyle=isCorner?'#67e8f9':isKong?'#64748b':'#bfdbfe';ctx.font=`bold ${isCorner?8:10}px Malgun Gothic`;ctx.textAlign='center';
       const jlbl=isCorner?'↻':isKong?'공피치':'C/PAD지그';
-      ctx.fillText(jlbl,0,isKong?2.5:0);
-      if(!isCorner&&!isKong){ctx.font='bold 5px Malgun Gothic';ctx.fillText('스키드',0,6);}
+      ctx.fillText(jlbl,0,isKong?3:0);
+      if(!isCorner&&!isKong){ctx.font='bold 7px Malgun Gothic';ctx.fillText('스키드',0,9);}
       // 지그 번호 표시 (옆에)
       if(!isCorner){
+        const isTop=curS>NB&&curS<NSLOT-1;
         ctx.fillStyle=isKong?'#64748b':'#93c5fd';
-        ctx.font=`bold 7px Malgun Gothic`;ctx.textAlign='left';
-        ctx.fillText(`#${j+1}`,jw2/2+2,-2);
+        ctx.font=`bold 11px Malgun Gothic`;
+        if(isTop){ctx.textAlign='right';ctx.fillText(`#${j+1}`,-jw2/2-2,0);}
+        else{ctx.textAlign='left';ctx.fillText(`#${j+1}`,jw2/2+2,0);}
         ctx.textAlign='center';
       }
       ctx.restore();
     }
 
-    // ── 상단·SUB 작업자 (지그 위에 표시) ──
-    topWQ.forEach(({cx,w})=>drawW(cx,WY_TOP,'#15803d',w+'명',9));
-    botWQ.forEach(({cx,w})=>drawW(cx,WY_BOT,'#15803d',w+'명',9));
-    subWQ.forEach(({sx})=>drawW(sx,SY+62,'#7c3aed','서브',8));
+    // ── 단공정 인원: 다공정 작업자 번호 이어서 W원으로 표시 ──
+    let singleWIdx=multiWorkers; // 다공정 다음 번호부터
+    // 단공정 인원 순번: 하단(공정번호 오름차순) → 상단(공정번호 오름차순)
+    botWQ.forEach(({cx,w})=>{
+      for(let k=0;k<w;k++){
+        const wc=`hsl(${20+(singleWIdx)*30},85%,58%)`;
+        drawW(cx+(k-(w-1)/2)*44,WY_BOT,wc,`W${singleWIdx+1}`,20);
+        singleWIdx++;
+      }
+    });
+    topWQ.forEach(({cx,w})=>{
+      for(let k=0;k<w;k++){
+        const wc=`hsl(${20+(singleWIdx)*30},85%,58%)`;
+        drawW(cx+(k-(w-1)/2)*44,WY_TOP,wc,`W${singleWIdx+1}`,20);
+        singleWIdx++;
+      }
+    });
 
     // ── 병목 앞 대기(queue) 표시 ──
     if(pitch>0){
@@ -2344,11 +2472,11 @@ function init2D(){
 
     // ── 대기 구역 표시 (1공정 왼쪽) ──
     {const qWP=waypoints[0];
-    rr(qWP.x-18,qWP.y-16,36,32,4);
+    rr(qWP.x-20,qWP.y-18,40,36,4);
     ctx.fillStyle='rgba(8,47,73,0.85)';ctx.fill();
     ctx.strokeStyle='#0284c7';ctx.lineWidth=1.5;ctx.stroke();
-    ctx.fillStyle='#38bdf8';ctx.font='bold 6px Malgun Gothic';ctx.textAlign='center';
-    ctx.fillText('대기',qWP.x,qWP.y-4);ctx.fillText('구역',qWP.x,qWP.y+5);}
+    ctx.fillStyle='#38bdf8';ctx.font='bold 8px Malgun Gothic';ctx.textAlign='center';
+    ctx.fillText('대기',qWP.x,qWP.y-4);ctx.fillText('구역',qWP.x,qWP.y+7);}
 
     // ── 다공정 작업자: 실제 지그 슬롯 기반 배치 ──
     // 각 슬롯의 실제 지그 여부 파악 → 작업자를 실제 지그 위치에만 배치
@@ -2360,13 +2488,16 @@ function init2D(){
       if(pn>0&&j%(pn+1)===pn) continue; // 공피치 제외
       realSlots.push(s);
     }
-    // 지그 번호로 작업자 고정 배정: 실제지그 j의 순번(공피치 제외) % 작업자수 = wi
+    // 첫 번째 실제 지그의 realIdx를 기준으로 순차 배정 (충돌 방지)
     const workerSlot=new Array(multiWorkers).fill(-1);
-    for(const s of realSlots){
-      const j=((s-advN%NSLOT)+NSLOT*100)%NSLOT;
-      const realIdx=pn>0?j-Math.floor(j/(pn+1)):j; // 공피치 제외한 실제 지그 순번
-      const wi=realIdx%multiWorkers;
-      if(workerSlot[wi]===-1) workerSlot[wi]=s; // 중복 방지
+    if(realSlots.length>0){
+      const j0=((realSlots[0]-advN%NSLOT)+NSLOT*100)%NSLOT;
+      const ri0=pn>0?j0-Math.floor(j0/(pn+1)):j0;
+      const startWi=ri0%multiWorkers;
+      realSlots.forEach((s,idx)=>{
+        const wi=(startWi+idx)%multiWorkers;
+        workerSlot[wi]=s;
+      });
     }
     let qOff=0;
     for(let wi=0;wi<multiWorkers;wi++){
@@ -2381,9 +2512,10 @@ function init2D(){
           wx=bx(s);wy=WY_BOT; // 모든 공정 체류 시 해당 공정 위치
         } else {
           if(s===subSlot&&subAirX!==null){
-            // transit 전반: 4공정→SUB, 후반: SUB→5공정
-            if(trP<0.5){const t2=trP/0.5;wx=bx(s)+(subAirX-bx(s))*easeIO(t2);wy=WY_BOT+(SY_W-WY_BOT)*easeIO(t2);}
-            else{const t2=(trP-0.5)/0.5;wx=subAirX+(bx(s+1)-subAirX)*easeIO(t2);wy=SY_W+(WY_BOT-SY_W)*easeIO(t2);}
+            // trP 0→0.25: 4공정→SUB 이동, 0.25→0.75: SUB 체류 작업, 0.75→1: SUB→5공정 이동
+            if(trP<0.25){const t2=trP/0.25;wx=bx(s)+(subAirX-bx(s))*easeIO(t2);wy=WY_BOT+(SY_W-WY_BOT)*easeIO(t2);}
+            else if(trP<0.75){wx=subAirX;wy=SY_W;}
+            else{const t2=(trP-0.75)/0.25;wx=subAirX+(bx(s+1)-subAirX)*easeIO(t2);wy=SY_W+(WY_BOT-SY_W)*easeIO(t2);}
           }
           else if(s===MN-1){wx=bx(s)+(queueX-bx(s))*easeIO(trP);wy=WY_BOT;} // 6공정→큐
           else{wx=bx(s)+(bx(s+1)-bx(s))*easeIO(trP);wy=WY_BOT;}
@@ -2393,7 +2525,7 @@ function init2D(){
         wx=queueX+qOff*16;wy=WY_BOT;qOff++;
         lbl=curJigIsKong?`W${wi+1}⏸`:`W${wi+1}`;
       }
-      drawW(wx,wy,wcolor,lbl,10);
+      drawW(wx,wy,wcolor,lbl,20);
     }
     // 현재 작업 공정 하이라이트 (W1 기준)
     {const si=advN%NWP;const wp=waypoints[si];
@@ -2771,5 +2903,55 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
 <div id="floatSave" style="display:none;position:fixed;bottom:24px;right:24px;z-index:9999">
   <button onclick="saveAllRows()" style="background:#7c3aed;border:2px solid #a855f7;color:#fff;font-weight:700;font-size:15px;padding:12px 22px;border-radius:12px;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,237,0.6)">💾 행 저장</button>
 </div>
+<script>
+/* ===== OneDrive 자동 백업 ===== */
+(async()=>{
+  const FILE='conveyor_backup.json';
+  const IDB='cams_od_v1';
+  const CONV_KEYS=()=>{const r={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('conv_'))r[k]=localStorage.getItem(k);}return r;};
+  async function _db(){return new Promise(r=>{const q=indexedDB.open(IDB,1);q.onupgradeneeded=e=>e.target.result.createObjectStore('h');q.onsuccess=e=>r(e.target.result);});}
+  async function _get(){const db=await _db();return new Promise(r=>{const t=db.transaction('h','readonly');const q=t.objectStore('h').get('dir');q.onsuccess=()=>r(q.result||null);});}
+  async function _put(h){const db=await _db();return new Promise(r=>{const t=db.transaction('h','readwrite');t.objectStore('h').put(h,'dir');t.oncomplete=r;});}
+  let dir=null;
+  async function checkPerm(){
+    dir=await _get();if(!dir)return false;
+    try{const p=await dir.queryPermission({mode:'readwrite'});if(p==='granted')return true;const r=await dir.requestPermission({mode:'readwrite'});return r==='granted';}
+    catch(e){dir=null;return false;}
+  }
+  let _saving=false;
+  async function odSave(){
+    if(!dir||_saving)return;_saving=true;
+    try{const fh=await dir.getFileHandle(FILE,{create:true});const w=await fh.createWritable();await w.write(JSON.stringify(CONV_KEYS()));await w.close();}catch(e){}
+    _saving=false;
+  }
+  async function odLoad(){if(!dir)return null;try{const fh=await dir.getFileHandle(FILE);return JSON.parse(await(await fh.getFile()).text());}catch(e){return null;}}
+
+  const btn=document.createElement('button');
+  btn.style.cssText='position:fixed;bottom:64px;right:24px;z-index:9999;padding:6px 14px;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;color:#fff;';
+  document.body.appendChild(btn);
+
+  const ok=await checkPerm();
+  btn.textContent=ok?'☁️ OneDrive 연결됨':'☁️ OneDrive 연결';
+  btn.style.background=ok?'#1a7f37':'#555';
+
+  btn.onclick=async()=>{
+    try{dir=await showDirectoryPicker({mode:'readwrite'});await _put(dir);btn.textContent='☁️ OneDrive 연결됨';btn.style.background='#1a7f37';await odSave();}
+    catch(e){}
+  };
+
+  if(ok){
+    const saved=await odLoad();
+    if(saved){
+      Object.entries(saved).forEach(([k,v])=>localStorage.setItem(k,v));
+      if(typeof loadLineData==='function')loadLineData();
+      if(typeof render==='function')render();
+      if(typeof renderScenarios==='function')renderScenarios();
+    }
+  }
+
+  const _origSet=localStorage.setItem.bind(localStorage);
+  localStorage.setItem=function(k,v){_origSet(k,v);if(k&&k.startsWith('conv_'))odSave();};
+})();
+</script>
 </body>
 </html>
