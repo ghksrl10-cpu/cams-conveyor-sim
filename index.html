@@ -456,7 +456,7 @@
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}loadLineData();init2D();">🔄 불러오기</button>
         <button class="btn warn" style="font-size:13px;padding:6px 14px" onclick="if(confirm('현재 데이터를 백업 후 기본값으로 초기화합니다. 계속할까요?')){const cur=localStorage.getItem('conv_struct_2_0');if(cur)localStorage.setItem('conv_struct_2_0_backup',cur);localStorage.setItem('conv_struct_2_0',JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));loadLineData();init2D();if(typeof _simPushCloud==='function')_simPushCloud();alert('백업 저장 완료. ↩ 백업복원 버튼으로 되돌릴 수 있습니다.');}">🔁 기본값 초기화</button>
-        <button class="btn" style="font-size:13px;padding:6px 14px;background:#1e3a5f" onclick="(function(){const b=localStorage.getItem('conv_struct_2_0_backup');if(!b){alert('백업 데이터가 없습니다.');return;}if(confirm('백업 데이터로 복원합니다. 현재 데이터는 사라집니다. 계속?')){localStorage.setItem('conv_struct_2_0',b);loadLineData();init2D();if(typeof _simPushCloud==='function')_simPushCloud();alert('복원 완료!');}})()">↩ 백업복원</button>
+        <button class="btn" style="font-size:13px;padding:6px 14px;background:#1e3a5f" onclick="if(typeof _simRestoreBackup==='function')_simRestoreBackup();else{const b=localStorage.getItem('conv_struct_2_0_backup');if(!b){alert('백업 없음');return;}if(confirm('백업으로 복원?')){localStorage.setItem('conv_struct_2_0',b);loadLineData();init2D();}}">↩ 백업복원</button>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="exportSimConfig()">💾 내보내기</button>
         <label class="btn" style="font-size:13px;padding:6px 14px;cursor:pointer">📂 가져오기<input type="file" accept=".json" style="display:none" onchange="importSimConfig(this)"></label>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="gotoSim(2)">📋 공정입력</button>
@@ -574,19 +574,45 @@
     }catch(e){console.warn('Firebase init 실패',e);}
   }
 
-  // localStorage 변경 시 클라우드 업로드
+  // localStorage 변경 시 클라우드 업로드 (업로드 전 기존 데이터 백업)
   window._simPushCloud=function(){
     if(!db||_pushing)return;
     _pushing=true;
     const payload={};
     allSyncKeys().forEach(k=>{const v=localStorage.getItem(k);if(v)payload[k]=v;});
-    db.collection('conveyor_sim').doc('config').set(payload,{merge:true})
-      .then(()=>{
-        document.getElementById('syncDot').style.background='#22c55e';
-        document.getElementById('syncDot').title='저장 완료 ☁';
-      })
-      .catch(()=>{document.getElementById('syncDot').style.background='#ef4444';})
-      .finally(()=>{_pushing=false;});
+    // 기존 Firestore 데이터 → backup 문서로 먼저 저장 후 업로드
+    db.collection('conveyor_sim').doc('config').get().then(snap=>{
+      if(snap.exists){
+        const old=snap.data()||{};
+        old._backedUpAt=(new Date()).toISOString();
+        return db.collection('conveyor_sim').doc('backup').set(old);
+      }
+    }).then(()=>{
+      return db.collection('conveyor_sim').doc('config').set(payload,{merge:true});
+    }).then(()=>{
+      document.getElementById('syncDot').style.background='#22c55e';
+      document.getElementById('syncDot').title='저장 완료 ☁';
+    })
+    .catch(()=>{document.getElementById('syncDot').style.background='#ef4444';})
+    .finally(()=>{_pushing=false;});
+  };
+
+  // Firestore 백업에서 복원
+  window._simRestoreBackup=function(){
+    if(!db)return;
+    db.collection('conveyor_sim').doc('backup').get().then(snap=>{
+      if(!snap.exists){alert('클라우드 백업 없음');return;}
+      const data=snap.data()||{};
+      const backedAt=data._backedUpAt||'?';
+      if(!confirm('클라우드 백업('+backedAt+')으로 복원할까요?'))return;
+      Object.entries(data).forEach(([k,v])=>{
+        if(k==='_backedUpAt')return;
+        localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));
+      });
+      if(typeof loadLineData==='function')loadLineData();
+      if(typeof init2D==='function')init2D();
+      alert('복원 완료!');
+    });
   };
 
   // 페이지 로드 후 Firebase 초기화
