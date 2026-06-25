@@ -2348,8 +2348,8 @@ function init2D(){
     const kongPassed=pn>0?Math.floor(advN/(pn+1)):0;
     const workerAdvN=advN-kongPassed; // 공피치 제외한 실질 진행 횟수
     const curJigIsKong=pn>0&&(advN%(pn+1))===pn;   // 현재 정지 지그가 공피치
-    // 대기 waypoint 제외하고 공정 위치에 균등 분산
-    const procIdx=waypoints.map((_,i)=>i).filter(i=>!waypoints[i].isQueue);
+    // 대기/SUB waypoint 제외하고 공정 위치에 균등 분산 (초기 위치에서 SUB 제외)
+    const procIdx=waypoints.map((_,i)=>i).filter(i=>!waypoints[i].isQueue&&!waypoints[i].isSub);
     const npi=procIdx.length||NWP;
     // 큐에 대기 중인 작업자 수 (공피치 위치 겹침 포함)
     let queueCount=0;
