@@ -2077,14 +2077,6 @@ function init2D(){
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
 
-    // ── 디버그 정보 (좌상단) ──
-    ctx.fillStyle='#facc15';ctx.font='bold 11px monospace';ctx.textAlign='left';
-    const _tcts=topRows.map(r=>(r.ct||0)+'('+r.name+')').join(' | ');
-    ctx.fillText(`rows=${allRows.length} main=${mainRows.length} NB=${NB} NT=${NT} half=${half}`,8,14);
-    ctx.fillText(`top CTs: ${_tcts}`,8,28);
-    ctx.fillText(`TTOP=${TTOP} TY=${TY} BY=${BY} H=${H} W=${W}`,8,42);
-    // 디버그: TTOP 위치에 빨간 선
-    ctx.strokeStyle='#ff0000';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,TTOP);ctx.lineTo(200,TTOP);ctx.stroke();
     ctx.textAlign='center';
 
     // ── 벨트 트랙 ──
@@ -2123,6 +2115,7 @@ function init2D(){
     // ── 하단 공정 박스 (6공정=2칸 너비) ──
     const fs=NB>15?7:NB>11?8:NB>8?9:10;
     const slotW=BW/NB; // 기본 1칸 너비
+    const topWQ=[],subWQ=[],botWQ=[]; // 작업자 지연 큐
     let skipBot=false;
     for(let i=0;i<botRows.length;i++){
       if(skipBot){skipBot=false;continue;}
@@ -2195,9 +2188,6 @@ function init2D(){
 
     // ── 상단 공정 박스 ──
     const fst=NT>15?7:NT>11?8:NT>8?9:10;
-    const topWQ=[]; // 상단 작업자 지연 큐 (지그 이후 그림)
-    const subWQ=[]; // SUB 작업자 지연 큐 (지그 이후 그림)
-    const botWQ=[]; // 하단 단독작업자 지연 큐 (지그 이후 그림)
     topRows.forEach((r,i)=>{
       const cx=tx_(i),tw2=BW/NT-3,tx2=RX-i*BW/NT-BW/NT+1.5;
       const ct=r.ct||0;
