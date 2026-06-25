@@ -2054,6 +2054,7 @@ function init2D(){
   }
 
   // ── 작업자 경로: 1공정 왼쪽 대기 → 1~6공정 → 복귀 로테이션 ──
+  const slotW=BW/NB;
   const SY_W=BY+TW/2+55+28;
   const subAirX=subRows.length>0?subParentBotX(subRows[0]):null;
   const waypoints=[];
