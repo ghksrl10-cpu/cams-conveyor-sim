@@ -479,6 +479,19 @@
           <span><span style="color:#ef4444">■</span> 병목</span>
         </span>
       </div>
+
+      <!-- ── 과부하 분석 패널 ── -->
+      <div id="overloadPanel" style="margin-top:12px;display:none">
+        <div style="background:#1a1d24;border:1px solid #2a2d35;border-radius:12px;overflow:hidden">
+          <div style="background:#20232b;padding:10px 14px;font-weight:800;font-size:14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="document.getElementById('overloadBody').style.display=document.getElementById('overloadBody').style.display==='none'?'block':'none'">
+            ⚠️ 과부하 · 납품 영향 분석
+            <span id="overloadBadge" style="font-size:12px;margin-left:auto"></span>
+          </div>
+          <div id="overloadBody">
+            <div id="overloadContent" style="padding:12px 14px;font-size:13px;line-height:1.9"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1639,8 +1652,108 @@ let _raf2d=null;
 
 function easeIO(t){return t<0.5?2*t*t:-1+(4-2*t)*t;}
 
+function renderOverloadPanel(){
+  const base=+document.getElementById('baseProd').value||205;
+  const pn=+document.getElementById('pitchRatio').value||0;
+  const wm=+document.getElementById('workMin').value||460;
+  const prod=pn===0?base:Math.round(base*pn/(pn+1));
+  const pitch=wm*60/prod;
+  const allRows=G().rows;
+  const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+  const mainRows=allRows.filter(r=>!isSUB(r));
+  const subRows=allRows.filter(r=>isSUB(r)&&((r.name||'').includes('에어백')||(r.task||'').includes('에어백')));
+  let multiSpan=1;
+  if(mainRows.length>0&&mainRows[0].taskSpan>1)multiSpan=mainRows[0].taskSpan;
+  else{let cnt=0;for(const r of mainRows){if(r.taskSpan===0)cnt++;else break;}multiSpan=1+cnt;}
+  const MN=Math.min(multiSpan,Math.ceil(mainRows.length/2));
+  const multiWorkers=mainRows[0]?.workers||1;
+  const grpCTTotal=mainRows.slice(0,MN).reduce((s,r)=>s+(r.ct||0),0)+subRows.reduce((s,r)=>s+(r.ct||0),0);
+  const grpEffCT=MN>0&&multiWorkers>0?grpCTTotal/multiWorkers:0;
+  const half=Math.ceil(mainRows.length/2);
+  const singleRows=[...mainRows.slice(MN,half),...mainRows.slice(half)];
+
+  const items=[];
+  // 다공정 그룹
+  if(grpEffCT>0){
+    const overload=grpEffCT>pitch;
+    const dailyActual=Math.floor(wm*60/grpEffCT);
+    const shortage=prod-dailyActual;
+    items.push({name:`다공정(1~${MN}공정+SUB) ${multiWorkers}인`,ct:grpEffCT,overload,shortage,
+      minus1:multiWorkers>1?Math.floor(wm*60/(grpCTTotal/(multiWorkers-1))):null,
+      type:'multi',workers:multiWorkers,grpCT:grpCTTotal});
+  }
+  // 단공정들
+  singleRows.forEach(r=>{
+    const ct=r.ct||0;if(!ct)return;
+    const overload=ct>pitch;
+    const dailyActual=Math.floor(wm*60/ct);
+    const shortage=prod-dailyActual;
+    const w=r.workers||1;
+    // 인원 -1 시 영향 (동시작업자이므로 C/T 변화없음 → 단 공정 삭제 시)
+    items.push({name:r.name||'공정',ct,overload,shortage,workers:w,type:'single'});
+  });
+
+  const panel=document.getElementById('overloadPanel');
+  const content=document.getElementById('overloadContent');
+  const badge=document.getElementById('overloadBadge');
+  const overloadItems=items.filter(x=>x.overload);
+  panel.style.display='block';
+  badge.innerHTML=overloadItems.length>0
+    ?`<span style="color:#ef4444;font-weight:700">❌ 과부하 ${overloadItems.length}곳</span>`
+    :`<span style="color:#22c55e;font-weight:700">✅ 전 공정 정상</span>`;
+
+  if(items.length===0){content.innerHTML='<span style="color:#64748b">C/T 데이터가 없습니다.</span>';return;}
+
+  let html=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <tr style="background:#20232b;color:#94a3b8">
+      <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #2a2d35">공정</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">유효C/T</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">피치</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">부하율</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">현재 생산가능</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">납품 부족</th>
+      <th style="padding:6px 8px;border-bottom:1px solid #2a2d35">인원-1명 시</th>
+    </tr>`;
+
+  items.forEach(x=>{
+    const load=(x.ct/pitch*100).toFixed(1);
+    const loadColor=x.overload?'#ef4444':+load>85?'#f59e0b':'#22c55e';
+    const dailyOk=Math.floor(wm*60/x.ct);
+    const shortageStr=x.shortage>0?`<span style="color:#ef4444;font-weight:700">-${x.shortage}대</span>`:`<span style="color:#22c55e">+${Math.abs(x.shortage)}대 여유</span>`;
+    // 인원 -1
+    let minus1Str='-';
+    if(x.type==='multi'&&x.minus1!==null){
+      const s=prod-x.minus1;
+      minus1Str=s>0?`<span style="color:#ef4444;font-weight:700">${x.minus1}대 (−${s}대 부족)</span>`:`<span style="color:#22c55e">${x.minus1}대 (여유)</span>`;
+    } else if(x.type==='single'){
+      minus1Str='<span style="color:#64748b">동시작업 불변</span>';
+    }
+    html+=`<tr style="border-bottom:1px solid #1e2128;${x.overload?'background:#2d0a0a':''}">
+      <td style="padding:6px 8px;font-weight:700;color:${x.overload?'#f87171':'#e2e8f0'}">${x.name}</td>
+      <td style="padding:6px 8px;text-align:center;color:#60a5fa">${x.ct.toFixed(1)}초</td>
+      <td style="padding:6px 8px;text-align:center;color:#94a3b8">${pitch.toFixed(1)}초</td>
+      <td style="padding:6px 8px;text-align:center;font-weight:700;color:${loadColor}">${load}%</td>
+      <td style="padding:6px 8px;text-align:center">${dailyOk}대/일</td>
+      <td style="padding:6px 8px;text-align:center">${shortageStr}</td>
+      <td style="padding:6px 8px;text-align:center">${minus1Str}</td>
+    </tr>`;
+  });
+  html+='</table>';
+
+  // 요약
+  if(overloadItems.length>0){
+    const worst=overloadItems.sort((a,b)=>b.ct-a.ct)[0];
+    html+=`<div style="margin-top:10px;padding:10px 12px;background:#2d0a0a;border:1px solid #7f1d1d;border-radius:8px;font-size:13px">
+      ❌ <b style="color:#f87171">병목: ${worst.name}</b> — 현재 최대 <b style="color:#f87171">${Math.floor(wm*60/worst.ct)}대/일</b> 생산 가능.
+      목표 ${prod}대 대비 <b style="color:#ef4444">하루 ${prod-Math.floor(wm*60/worst.ct)}대 납품 부족</b> 발생.
+    </div>`;
+  }
+  content.innerHTML=html;
+}
+
 function init2D(){
   if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}
+  renderOverloadPanel();
   const cv=document.getElementById('cv2d');
   if(!cv)return;
   const W=cv.parentElement?Math.max(760,cv.parentElement.clientWidth-32):760, H=530;
