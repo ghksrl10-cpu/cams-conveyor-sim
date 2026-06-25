@@ -457,6 +457,7 @@
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}loadLineData();init2D();">🔄 불러오기</button>
         <button class="btn warn" style="font-size:13px;padding:6px 14px" onclick="if(confirm('현재 데이터를 백업 후 기본값으로 초기화합니다. 계속할까요?')){const cur=localStorage.getItem('conv_struct_2_0');if(cur)localStorage.setItem('conv_struct_2_0_backup',cur);localStorage.setItem('conv_struct_2_0',JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));loadLineData();init2D();if(typeof _simPushCloud==='function')_simPushCloud();alert('백업 저장 완료. ↩ 백업복원 버튼으로 되돌릴 수 있습니다.');}">🔁 기본값 초기화</button>
         <button class="btn" style="font-size:13px;padding:6px 14px;background:#1e3a5f" onclick="if(typeof _simRestoreBackup==='function')_simRestoreBackup();else{const b=localStorage.getItem('conv_struct_2_0_backup');if(!b){alert('백업 없음');return;}if(confirm('백업으로 복원?')){localStorage.setItem('conv_struct_2_0',b);loadLineData();init2D();}}">↩ 백업복원</button>
+        <button class="btn" style="font-size:13px;padding:6px 14px;color:#a78bfa;border-color:#4c1d95" onclick="recoverFromScenario()">📋 시나리오 복구</button>
         <button class="btn" style="font-size:13px;padding:6px 14px;color:#f87171;border-color:#7f1d1d" onclick="if(confirm('저장된 로컬 데이터를 지우고 코드 기본값으로 복구합니다.')){localStorage.removeItem('conv_struct_2_0');loadLineData();init2D();alert('✅ 복구 완료!');}">🔄 기본값 복구</button>
         <button class="btn" style="font-size:13px;padding:6px 14px;color:#f87171;border-color:#7f1d1d" onclick="recoverFromFirebase()">☁ 클라우드 복구</button>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="exportSimConfig()">💾 내보내기</button>
@@ -513,7 +514,7 @@
     messagingSenderId:"404254094434",
     appId:"1:404254094434:web:b4193a15de4153b9aa0d3b"
   };
-  const SYNC_KEYS=['conv_struct_2_0','conv_scenarios'];
+  const SYNC_KEYS=['conv_struct_2_0','conv_scen4'];
   // 추가 conv_struct 키 동적 수집 포함
   function allSyncKeys(){
     const keys=new Set(SYNC_KEYS);
@@ -750,6 +751,41 @@ function gotoSim(li){
   buildStabs();loadLineData();
   document.getElementById('simTitle').textContent=LINE_DEF[li].name+' — '+LINE_DEF[li].subs[0];
   document.querySelectorAll('[id^=nl]').forEach((el,i)=>el.classList.toggle('active',i===li));
+}
+function recoverFromScenario(){
+  // localStorage 또는 Firebase에서 시나리오 찾아 행 데이터 복원
+  const raw=localStorage.getItem('conv_scen4');
+  const list=raw?JSON.parse(raw):[];
+  const withRows=list.filter(s=>s.rows&&s.rows.length>0);
+  if(withRows.length===0){
+    // Firebase에서도 시도
+    if(!firebase||!firebase.apps.length){alert('시나리오 데이터 없음');return;}
+    firebase.firestore().collection('conveyor_sim').doc('config').get().then(snap=>{
+      if(!snap.exists)return alert('Firebase에도 시나리오 없음');
+      const raw2=snap.data()['conv_scen4'];
+      if(!raw2)return alert('Firebase에 시나리오 없음');
+      const list2=JSON.parse(raw2).filter(s=>s.rows&&s.rows.length>0);
+      if(!list2.length)return alert('저장된 시나리오에 공정 데이터 없음');
+      showScenRecovery(list2);
+    });
+    return;
+  }
+  showScenRecovery(withRows);
+}
+function showScenRecovery(list){
+  const opts=list.map((s,i)=>`${i+1}. [${s.at||''}] ${s.name||''} (${s.cnt||0}공정, ${s.rows.length}행)`).join('\n');
+  const pick=prompt(`복구할 시나리오 번호 선택:\n\n${opts}\n\n번호 입력:`);
+  const idx=parseInt(pick)-1;
+  if(isNaN(idx)||idx<0||idx>=list.length)return;
+  const sc=list[idx];
+  if(!confirm(`[${sc.name}] 시나리오로 조립 3라인 C/PAD 공정 데이터 복구합니다.`))return;
+  state[2][0].rows=JSON.parse(JSON.stringify(sc.rows));
+  localStorage.setItem('conv_struct_2_0',JSON.stringify(sc.rows));
+  if(typeof _simPushCloud==='function')_simPushCloud();
+  curLine=2;curSub=0;
+  loadLineData();
+  if(typeof render==='function')render();
+  alert('✅ 복구 완료! 공정입력 탭에서 확인하세요.');
 }
 function recoverFromFirebase(){
   if(!firebase||!firebase.apps.length){alert('Firebase 연결 안됨');return;}
