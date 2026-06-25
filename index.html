@@ -2398,7 +2398,7 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
   const ll=parseInt(localStorage.getItem('conv_lastLine')||'-1');
   if(!lv||lv==='main')return;
   if(lv==='sim'&&ll>=0){gotoSim(ll);}
-  else if(lv==='2d'){showView('2d');setTimeout(()=>init2D(),200);}
+  else if(lv==='2d'){showView('2d');requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>init2D(),100)));}
   else{showView(lv);}
 })();
 </script>
