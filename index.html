@@ -2028,6 +2028,9 @@ function init2D(){
     const _tcts=topRows.map(r=>(r.ct||0)+'('+r.name+')').join(' | ');
     ctx.fillText(`rows=${allRows.length} main=${mainRows.length} NB=${NB} NT=${NT} half=${half}`,8,14);
     ctx.fillText(`top CTs: ${_tcts}`,8,28);
+    ctx.fillText(`TTOP=${TTOP} TY=${TY} BY=${BY} H=${H} W=${W}`,8,42);
+    // 디버그: TTOP 위치에 빨간 선
+    ctx.strokeStyle='#ff0000';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,TTOP);ctx.lineTo(200,TTOP);ctx.stroke();
     ctx.textAlign='center';
 
     // ── 벨트 트랙 ──
