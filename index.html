@@ -455,7 +455,8 @@
       <h1>조립 3라인 C/PAD — 컨베어 2D 시뮬레이션</h1>
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="if(_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}loadLineData();init2D();">🔄 불러오기</button>
-        <button class="btn warn" style="font-size:13px;padding:6px 14px" onclick="if(confirm('공정 데이터를 기본값으로 초기화합니다. 계속할까요?')){localStorage.setItem('conv_struct_2_0',JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));loadLineData();init2D();if(typeof _simPushCloud==='function')_simPushCloud();}">🔁 기본값 초기화</button>
+        <button class="btn warn" style="font-size:13px;padding:6px 14px" onclick="if(confirm('현재 데이터를 백업 후 기본값으로 초기화합니다. 계속할까요?')){const cur=localStorage.getItem('conv_struct_2_0');if(cur)localStorage.setItem('conv_struct_2_0_backup',cur);localStorage.setItem('conv_struct_2_0',JSON.stringify(JSON.parse(JSON.stringify(DEF_CPAD))));loadLineData();init2D();if(typeof _simPushCloud==='function')_simPushCloud();alert('백업 저장 완료. ↩ 백업복원 버튼으로 되돌릴 수 있습니다.');}">🔁 기본값 초기화</button>
+        <button class="btn" style="font-size:13px;padding:6px 14px;background:#1e3a5f" onclick="(function(){const b=localStorage.getItem('conv_struct_2_0_backup');if(!b){alert('백업 데이터가 없습니다.');return;}if(confirm('백업 데이터로 복원합니다. 현재 데이터는 사라집니다. 계속?')){localStorage.setItem('conv_struct_2_0',b);loadLineData();init2D();if(typeof _simPushCloud==='function')_simPushCloud();alert('복원 완료!');}})()">↩ 백업복원</button>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="exportSimConfig()">💾 내보내기</button>
         <label class="btn" style="font-size:13px;padding:6px 14px;cursor:pointer">📂 가져오기<input type="file" accept=".json" style="display:none" onchange="importSimConfig(this)"></label>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="gotoSim(2)">📋 공정입력</button>
