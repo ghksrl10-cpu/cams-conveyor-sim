@@ -2350,33 +2350,40 @@ function init2D(){
     ctx.fillStyle='#38bdf8';ctx.font='bold 6px Malgun Gothic';ctx.textAlign='center';
     ctx.fillText('대기',qWP.x,qWP.y-4);ctx.fillText('구역',qWP.x,qWP.y+5);}
 
-    // ── 다공정 작업자: waypoints(SUB 경유) 동기화 ──
-    // 공피치 대차에서는 작업자 이동 없음 — 실제 대차에서만 이동
-    const kongPassed=pn>0?Math.floor(advN/(pn+1)):0;
-    const workerAdvN=advN-kongPassed; // 공피치 제외한 실질 진행 횟수
-    const curJigIsKong=pn>0&&(advN%(pn+1))===pn;   // 현재 정지 지그가 공피치
-    // 대기/SUB waypoint 제외하고 공정 위치에 균등 분산 (초기 위치에서 SUB 제외)
-    const procIdx=waypoints.map((_,i)=>i).filter(i=>!waypoints[i].isQueue&&!waypoints[i].isSub);
-    const npi=procIdx.length||NWP;
-    // 큐에 대기 중인 작업자 수 (공피치 위치 겹침 포함)
-    let queueCount=0;
+    // ── 다공정 작업자: 실제 지그 슬롯 기반 배치 ──
+    // 각 슬롯의 실제 지그 여부 파악 → 작업자를 실제 지그 위치에만 배치
+    const curJigIsKong=pn>0&&(advN%(pn+1))===pn;
+    // 다공정 범위(0~MN-1) 슬롯별 실제지그 여부
+    const realSlots=[]; // bIdx 오름차순
+    for(let s=0;s<MN;s++){
+      const j=((s-advN%NSLOT)+NSLOT*100)%NSLOT;
+      if(pn>0&&j%(pn+1)===pn) continue; // 공피치 제외
+      realSlots.push(s);
+    }
+    // 오른쪽(진행된) 작업자부터 W1 배정
+    const rDesc=[...realSlots].reverse();
+    let qOff=0;
     for(let wi=0;wi<multiWorkers;wi++){
-      const baseOff=procIdx[Math.floor(wi*npi/multiWorkers)]||0;
-      const si=(baseOff+workerAdvN)%NWP;
-      // 공피치 슬롯 → 큐로 리다이렉트 (dispNi=1공정 고정으로 SUB 이중출현 방지)
-      let dispSi=si, dispNi=(si+1)%NWP;
-      if(!waypoints[si].isQueue&&waypoints[si].bIdx>=0&&pn>0){
-        const jAt=((waypoints[si].bIdx-advN%NSLOT)+NSLOT*100)%NSLOT;
-        if(jAt%(pn+1)===pn){dispSi=0;dispNi=1;} // 큐→1공정 고정
-      }
-      const atQueue=waypoints[dispSi].isQueue;
-      const qOff=atQueue?(queueCount++)*16:0;
-      const wpc=waypoints[dispSi],wpn=waypoints[dispNi];
-      const shouldMove=isTransit&&!(atQueue&&curJigIsKong);
-      const wx=(shouldMove?wpc.x+(wpn.x-wpc.x)*easeIO(trP):wpc.x)+qOff;
-      const wy=shouldMove?wpc.y+(wpn.y-wpc.y)*easeIO(trP):wpc.y;
+      let wx,wy,lbl=`W${wi+1}`;
       const wcolor=`hsl(${20+wi*30},85%,58%)`;
-      const lbl=atQueue?(curJigIsKong?`W${wi+1}⏸`:`W${wi+1}`):`W${wi+1}`;
+      if(wi<rDesc.length){
+        const s=rDesc[wi];
+        // SUB에어백: slot 3→4 전환구간 작업자는 SUB로
+        const subSlot=subAirX!==null?3:-1; // 4공정(slot3) 다음 SUB 경유
+        if(!isTransit){
+          if(s===subSlot+1&&subAirX!==null){wx=subAirX;wy=SY_W;} // 5공정 자리→SUB 체류
+          else{wx=bx(s);wy=WY_BOT;}
+        } else {
+          if(s===subSlot&&subAirX!==null){wx=bx(s)+(subAirX-bx(s))*easeIO(trP);wy=WY_BOT+(SY_W-WY_BOT)*easeIO(trP);}
+          else if(s===subSlot+1&&subAirX!==null){wx=subAirX+(bx(s)-subAirX)*easeIO(trP);wy=SY_W+(WY_BOT-SY_W)*easeIO(trP);}
+          else if(s===MN-1){wx=bx(s)+(queueX-bx(s))*easeIO(trP);wy=WY_BOT;} // 6공정→큐
+          else{wx=bx(s)+(bx(s+1)-bx(s))*easeIO(trP);wy=WY_BOT;}
+        }
+      } else {
+        // 큐 대기
+        wx=queueX+qOff*16;wy=WY_BOT;qOff++;
+        lbl=curJigIsKong?`W${wi+1}⏸`:`W${wi+1}`;
+      }
       drawW(wx,wy,wcolor,lbl,10);
     }
     // 현재 작업 공정 하이라이트 (W1 기준)
