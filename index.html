@@ -961,7 +961,7 @@ function render(){
         let sp=1;
         for(let q=p+1;q<_drows.length;q++){
           if(_isSub(_drows[q]))break;
-          if((_drows[q][key]||1)===0)sp++;else break;
+          if((_drows[q][key]??1)===0)sp++;else break;
         }
         eff[p]=sp;
         for(let q=p+1;q<p+sp;q++)eff[q]=0;
