@@ -1926,6 +1926,8 @@ function renderOverloadPanel(){
   // 6명이 필요해지는 첫 pn 찾기
   const firstSix=scenarios.find(sc=>sc.minW>=6);
 
+  const perPersonSaved=+(document.getElementById('perPersonProd')||{}).value||35;
+  const fixedWSaved=+(document.getElementById('fixedWorkers')||{}).value||0;
   const fixedW=fixedWSaved>0?fixedWSaved:0;
   function renderTable(scList,title,color,isCtBased){
     const showFixed=fixedW>0;
@@ -1988,8 +1990,6 @@ function renderOverloadPanel(){
     return t;
   }
 
-  const perPersonSaved=+(document.getElementById('perPersonProd')||{}).value||35;
-  const fixedWSaved=+(document.getElementById('fixedWorkers')||{}).value||0;
   const infoBar=`<div style="margin:12px 0 8px;font-size:11px;color:#94a3b8;display:flex;gap:16px;flex-wrap:wrap;align-items:center">
     <span>고객사 목표: <b style="color:#f8fafc">${base}대/일</b></span>
     <span>총 C/T: <b style="color:#60a5fa">${grpCTTotal.toFixed(1)}초</b></span>
