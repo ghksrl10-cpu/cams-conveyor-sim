@@ -948,7 +948,7 @@ function render(){
   const _isAir=r=>_isSub(r)&&((r.name||'').includes('에어백')||(r.task||'').includes('에어백'));
   const _mainIdx=[],_airIdx=[],_otherSubIdx=[];
   s.rows.forEach((r,i)=>{if(_isAir(r))_airIdx.push(i);else if(_isSub(r))_otherSubIdx.push(i);else _mainIdx.push(i);});
-  const _displayOrder=[..._mainIdx.slice(0,4),..._airIdx,..._mainIdx.slice(4),..._otherSubIdx];
+  const _displayOrder=[..._mainIdx,..._airIdx,..._otherSubIdx];
   // SUB 행이 rowspan 그룹 중간에 삽입될 때 컬럼 밀림 방지 — 동적 span 재계산
   const _drows=_displayOrder.map(idx=>s.rows[idx]);
   function _respan(key){
