@@ -1929,61 +1929,52 @@ function renderOverloadPanel(){
   const perPersonSaved=+(document.getElementById('perPersonProd')||{}).value||35;
   const fixedWSaved=+(document.getElementById('fixedWorkers')||{}).value||0;
   const fixedW=fixedWSaved>0?fixedWSaved:0;
+  const COL_W=['90px','55px','85px','90px','65px','80px','65px','80px'];
+  const colgroup=`<colgroup>${COL_W.map(w=>`<col style="width:${w}">`).join('')}</colgroup>`;
   function renderTable(scList,title,color,isCtBased){
-    const showFixed=fixedW>0;
     let t=`<div style="margin:0 0 6px;font-size:12px;font-weight:700;color:${color}">${title}</div>`;
-    t+=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    t+=`<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">${colgroup}
       <tr style="background:#20232b;color:#94a3b8">
         <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">공피치<br><span style="font-weight:400;font-size:10px">공:실제</span></th>
         <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">UPH</th>
         <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">피치<br><span style="font-weight:400;font-size:10px">유효주기</span></th>
-        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">최소<br>작업자</th>
+        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">인원<br><input type="number" id="fixedWorkers" value="${fixedWSaved||''}" min="1" max="20" placeholder="최소" style="width:44px;padding:1px 3px;background:#1e293b;border:1px solid #475569;border-radius:3px;color:#fb923c;font-weight:700;text-align:center;font-size:11px;margin-top:2px" onchange="renderOverloadPanel()"></th>
         <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">부하율</th>
         <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">일 생산량</th>
         <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">인당<br><span style="font-weight:400;font-size:10px">대/인/일</span></th>
         <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35">고객사 대비</th>
-        ${showFixed?`<th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35;border-left:2px solid #fb923c;color:#fb923c">${fixedW}명<br><span style="font-weight:400;font-size:10px">생산량</span></th>
-        <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #2a2d35;color:#fb923c">${fixedW}명<br><span style="font-weight:400;font-size:10px">부하율</span></th>`:''}
       </tr>`;
     let prevW=null;
     scList.forEach(sc=>{
       const isCur=sc.pn===curPn;
-      const w=isCtBased?sc.minW:sc.camsMinW;
-      const prod=sc.prod;
-      const diff=sc.diff;
-      const uph=Math.round(sc.prod*60/wm);
+      const minW=isCtBased?sc.minW:sc.camsMinW;
+      const w=fixedW>0?fixedW:minW;
+      const prod=fixedW>0&&fixedW<minW?Math.floor(wm*60*fixedW/grpCTTotal):sc.prod;
+      const load=fixedW>0?Math.round(grpCTTotal/(w*sc.pitchEff)*100):sc.load;
+      const diff=prod-base;
+      const uph=Math.round(prod*60/wm);
       const perHead=w>0?Math.round(prod/w):0;
-      const workerChanged=prevW!==null&&w!==prevW;
-      prevW=w;
+      const workerChanged=prevW!==null&&minW!==prevW;
+      prevW=minW;
       const is6boundary=isCtBased&&sc.pn===firstSix?.pn;
-      const loadColor=sc.load>=95?'#ef4444':sc.load>=85?'#f59e0b':'#22c55e';
+      const loadColor=load>=100?'#ef4444':load>=85?'#f59e0b':'#22c55e';
+      const wColor=w>=6?'#ef4444':w>=5?'#f59e0b':'#4ade80';
+      const wLabel=fixedW>0?(fixedW<minW?`<span style="color:#fb923c">${w}명<span style="font-size:9px;color:#94a3b8"> (최소${minW})</span></span>`:`${w}명`):`${w}명`;
       const diffStr=diff>=0
         ?`<span style="color:#22c55e;font-weight:700">+${diff}대</span>`
         :`<span style="color:#ef4444;font-weight:700">${diff}대</span>`;
       const rowBg=isCur?'background:#0f2940;':(diff<0?'background:#160808;':'');
       const leftBorder=isCur?'border-left:3px solid #0284c7;':is6boundary?'border-left:3px solid #ef4444;':'border-left:3px solid transparent;';
       const topBorder=workerChanged?'border-top:2px solid #334155;':'';
-      let fixedCell='';
-      if(showFixed){
-        const fProd=fixedW>=w?prod:Math.floor(wm*60*fixedW/grpCTTotal);
-        const fLoad=fixedW>0?Math.round(grpCTTotal/(fixedW*sc.pitchEff)*100):0;
-        const fDiff=fProd-base;
-        const fDiffStr=fDiff>=0?`<span style="color:#22c55e;font-weight:600">+${fDiff}</span>`:`<span style="color:#ef4444;font-weight:600">${fDiff}</span>`;
-        const fLoadColor=fLoad>=100?'#ef4444':fLoad>=85?'#f59e0b':'#22c55e';
-        const fProdColor=fixedW<w?'#f97316':'#e2e8f0';
-        fixedCell=`<td style="padding:5px 8px;text-align:center;border-left:2px solid #431407;font-weight:700;color:${fProdColor}">${fProd}대 <span style="font-size:10px;font-weight:400">${fDiffStr}</span></td>
-        <td style="padding:5px 8px;text-align:center;font-weight:700;color:${fLoadColor}">${fLoad}%</td>`;
-      }
       t+=`<tr style="${rowBg}${leftBorder}${topBorder}border-bottom:1px solid #1e2128;">
         <td style="padding:5px 8px;text-align:center;color:${isCur?'#38bdf8':is6boundary?'#fca5a5':'#cbd5e1'};font-weight:${isCur||is6boundary?'700':'400'}">${sc.pn===0?'없음':`1:${sc.pn}`}${isCur?' ◀':''}${is6boundary?' ⚠️':''}</td>
         <td style="padding:5px 8px;text-align:center;color:#fbbf24;font-weight:700">${uph}</td>
         <td style="padding:5px 8px;text-align:center;color:#60a5fa">${sc.pitchEff.toFixed(1)}초</td>
-        <td style="padding:5px 8px;text-align:center;font-weight:700;color:${w>=6?'#ef4444':w>=5?'#f59e0b':'#4ade80'}">${w}명</td>
-        <td style="padding:5px 8px;text-align:center;font-weight:700;color:${loadColor}">${sc.load.toFixed(0)}%</td>
+        <td style="padding:5px 8px;text-align:center;font-weight:700;color:${wColor}">${wLabel}</td>
+        <td style="padding:5px 8px;text-align:center;font-weight:700;color:${loadColor}">${load.toFixed(0)}%</td>
         <td style="padding:5px 8px;text-align:center;font-weight:700;color:#e2e8f0">${prod}대</td>
         <td style="padding:5px 8px;text-align:center;color:#a78bfa;font-weight:700">${perHead}대</td>
         <td style="padding:5px 8px;text-align:center">${diffStr}</td>
-        ${fixedCell}
       </tr>`;
     });
     t+='</table>';
@@ -1999,12 +1990,6 @@ function renderOverloadPanel(){
         style="width:52px;padding:2px 4px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#fbbf24;font-weight:700;text-align:center;font-size:12px"
         onchange="renderOverloadPanel()">
       <span>대/인/일</span>
-    </span>
-    <span style="display:flex;align-items:center;gap:4px;border-left:1px solid #334155;padding-left:12px">지정 인원:
-      <input type="number" id="fixedWorkers" value="${fixedWSaved||''}" min="1" max="20" step="1" placeholder="–"
-        style="width:40px;padding:2px 4px;background:#1e293b;border:1px solid #475569;border-radius:4px;color:#fb923c;font-weight:700;text-align:center;font-size:12px"
-        onchange="renderOverloadPanel()">
-      <span>명</span>
     </span>
   </div>`;
 
