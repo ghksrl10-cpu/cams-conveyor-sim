@@ -2077,8 +2077,8 @@ function openDistPanel(tkey){
 function _toggleFloatBtns(hide){
   const fs=document.getElementById('floatSave');
   const od=document.getElementById('odBtn');
-  if(fs) fs.style.visibility=hide?'hidden':'';
-  if(od) od.style.visibility=hide?'hidden':'';
+  if(fs) fs.style.display=hide?'none':(fs._origDisplay||'block');
+  if(od){if(!od._origDisplay)od._origDisplay=od.style.display||'block';od.style.display=hide?'none':od._origDisplay;}
 }
 function closeDistPanel(){document.getElementById('distModal').classList.remove('show');_toggleFloatBtns(false);}
 function resetDist(){_distSuspended=-1;_distAssign={};renderDistPanel();}
