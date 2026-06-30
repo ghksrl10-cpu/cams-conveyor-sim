@@ -2016,135 +2016,229 @@ function renderOverloadPanel(){
 }
 
 /* ─── 공수 분배 ─────────────────────────────── */
-let _distSuspended=-1; // 중단 공정 인덱스
-let _distExtra={};     // {rowIdx: 추가초}
+// 작업 항목 정의: {key, label, unit(초), type}
+const DIST_ITEMS=[
+  {key:'ctcMove3',    label:'이동',        unit:10,  type:'cnt'},
+  {key:'ctcUnpack3',  label:'포장해체',    unit:10,  type:'cnt'},
+  {key:'ctcDanpum',   label:'단품',        unit:6,   type:'cnt'},
+  {key:'ctcHarness',  label:'하네스',      unit:6,   type:'cnt'},
+  {key:'ctcHook3',    label:'HOOK',        unit:1.8, type:'cnt'},
+  {key:'ctcBarcode3', label:'바코드스캔',  unit:3,   type:'cnt'},
+  {key:'ctcDong',     label:'동선',        unit:5,   type:'cnt'},
+  {key:'ctcAirbag',   label:'에어백/CPAD', unit:10,  type:'cnt'},
+  {key:'ctcTorque3',  label:'토크/임팩',   unit:8,   type:'cnt'},
+  {key:'ctcNut',      label:'너트',        unit:4.5, type:'cnt'},
+  {key:'ctcScrew',    label:'스크류',      unit:4.5, type:'cnt'},
+  {key:'ctcShex',     label:'S육각',       unit:4.5, type:'cnt'},
+  {key:'ctcBhex',     label:'B육각',       unit:4.5, type:'cnt'},
+  {key:'ctcWireSensor3',label:'WIRING센서',unit:3,   type:'cnt'},
+  {key:'ctcWireClip3',  label:'WIRING클립',unit:1.8, type:'cnt'},
+  {key:'ctcTestItem3',  label:'전장TEST',   unit:1.5, type:'cnt'},
+  {key:'ctcPadCnt3',    label:'PAD',        unit:3,   type:'cnt'},
+  {key:'ctcBrktCnt3',   label:'BRKT',       unit:4.5, type:'cnt'},
+  {key:'ctcMldgCnt3',   label:'MLDG',       unit:5,   type:'cnt'},
+];
+let _distSuspended=-1;
+let _distAssign={};  // {itemKey: {toRowIdx: count}}
 
 function openDistPanel(){
   _distSuspended=-1;
-  _distExtra={};
+  _distAssign={};
   renderDistPanel();
   document.getElementById('distModal').classList.add('show');
 }
 function closeDistPanel(){document.getElementById('distModal').classList.remove('show');}
-function resetDist(){_distSuspended=-1;_distExtra={};renderDistPanel();}
+function resetDist(){_distSuspended=-1;_distAssign={};renderDistPanel();}
 
 function _distRows(){
-  const allRows=G().rows;
   const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
-  return allRows.map((r,i)=>({r,i})).filter(({r})=>!isSUB(r)&&r.ct>0);
+  return G().rows.map((r,i)=>({r,i})).filter(({r})=>!isSUB(r)&&(r.ct>0||r.ctFormula));
+}
+function _calcCTfromFormula(f,extra){
+  // extra: {itemKey: addedCount}
+  if(!f||f._type!=='line3') return 0;
+  const v=k=>(+(f[k]||0))+(extra?+(extra[k]||0):0);
+  let t=0;
+  t+=v('ctcMove3')*10+v('ctcUnpack3')*10;
+  t+=+(f.ctcBase3||0);
+  t+=v('ctcDanpum')*6+v('ctcHarness')*6;
+  t+=v('ctcHook3')*1.8+v('ctcBarcode3')*3;
+  t+=v('ctcDong')*5+v('ctcAirbag')*10;
+  const nut=v('ctcNut'),scr=v('ctcScrew'),sh=v('ctcShex'),bh=v('ctcBhex');
+  t+=(nut+scr+sh+bh)*4.5;
+  const ws=v('ctcWireSensor3'),wc=v('ctcWireClip3');
+  if(ws||wc) t+=5+ws*3+wc*1.8;
+  const ti=v('ctcTestItem3'); if(ti) t+=3+1.5*ti;
+  t+=v('ctcTorque3')*8;
+  const pc=v('ctcPadCnt3');
+  if(pc) t+=4+3*(pc-1);
+  const bc=v('ctcBrktCnt3'),bhw=v('ctcBrktHW3');
+  if(bc||bhw) t+=(f.ctcBrktType3==='hw'?4.5*bc+3*bhw:4.5*(bc+bhw));
+  const mc=v('ctcMldgCnt3'),mh=v('ctcMldgHW3');
+  if(mc||mh) t+=5*(mc+mh);
+  return Math.round(t*10)/10;
 }
 
 function renderDistPanel(){
   const rows=_distRows();
-  const suspRow=_distSuspended>=0?rows.find(({i})=>i===_distSuspended):null;
-  const suspCT=suspRow?suspRow.r.ct:0;
-  const usedExtra=Object.values(_distExtra).reduce((a,b)=>a+b,0);
-  const remaining=Math.round((suspCT-usedExtra)*10)/10;
+  const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+  const subRows=G().rows.filter(r=>isSUB(r)&&((r.name||'').includes('에어백')||(r.task||'').includes('에어백')));
+  const subCT=subRows.reduce((s,r)=>s+(r.ct||0),0);
 
   const base=+document.getElementById('baseProd').value||205;
   const curPn=+document.getElementById('pitchRatio').value||0;
   const wm=+document.getElementById('workMin').value||460;
   const pitchFull=wm*60/base;
   const pitchEff=curPn===0?pitchFull:pitchFull*(curPn+1)/curPn;
+  const beforeProd=curPn===0?base:Math.round(base*curPn/(curPn+1));
 
-  // 전: 그룹 총 CT
-  const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
-  const subRows=G().rows.filter(r=>isSUB(r)&&((r.name||'').includes('에어백')||(r.task||'').includes('에어백')));
-  const subCT=subRows.reduce((s,r)=>s+(r.ct||0),0);
+  const suspRow=_distSuspended>=0?rows.find(({i})=>i===_distSuspended):null;
+  const suspF=suspRow?suspRow.r.ctFormula:null;
+
+  // 중단 공정의 각 항목 원본 갯수
+  const suspItems=suspF?DIST_ITEMS.filter(it=>+(suspF[it.key]||0)>0):[];
+
+  // 각 항목 배분된 총량
+  const assignedTotal=it=>Object.values(_distAssign[it.key]||{}).reduce((a,b)=>a+b,0);
+
+  // 각 수신 공정의 추가 C/T 계산
+  function extraCTforRow(ri){
+    let ct=0;
+    DIST_ITEMS.forEach(it=>{
+      const cnt=(_distAssign[it.key]||{})[ri]||0;
+      if(cnt>0) ct+=cnt*it.unit;
+    });
+    return Math.round(ct*10)/10;
+  }
+
+  // 전/후 총 CT
   const beforeCT=rows.reduce((s,{r})=>s+(r.ct||0),0)+subCT;
-
-  // 후: 중단 공정 제외 + 추가공수 반영
-  const afterCT=rows.filter(({i})=>i!==_distSuspended).reduce((s,{r,i})=>s+(r.ct||0)+(_distExtra[i]||0),0)+subCT;
+  const afterCT=rows.reduce((s,{r,i})=>{
+    if(i===_distSuspended) return s;
+    return s+(r.ct||0)+extraCTforRow(i);
+  },0)+subCT;
 
   const beforeMinW=Math.ceil(beforeCT/pitchEff);
   const afterMinW=Math.ceil(afterCT/pitchEff);
   const beforeLoad=Math.round(beforeCT/(beforeMinW*pitchEff)*100);
-  const afterLoad=Math.round(afterCT/(afterMinW*pitchEff)*100);
-  const beforeProd=curPn===0?base:Math.round(base*curPn/(curPn+1));
-  const afterProd=afterMinW>beforeMinW?Math.floor(wm*60*(afterMinW-1)/afterCT*(curPn===0?1:curPn/(curPn+1))):beforeProd;
+  const afterLoad=afterMinW>0?Math.round(afterCT/(afterMinW*pitchEff)*100):0;
+  const afterProd=afterMinW>beforeMinW?Math.floor(wm*60*afterMinW/afterCT*(curPn===0?1:curPn/(curPn+1))):beforeProd;
 
-  const remColor=remaining<0?'#ef4444':remaining<10?'#f59e0b':'#22c55e';
+  let html='';
 
-  let html=``;
-
-  // 상단: 비교 카드
-  html+=`<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;margin-bottom:16px;align-items:center">
+  // ── 비교 카드
+  html+=`<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;margin-bottom:14px;align-items:center">
     <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;text-align:center">
-      <div style="font-size:10px;color:#64748b;margin-bottom:4px">변경 전</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:2px">변경 전</div>
       <div style="font-size:20px;font-weight:800;color:#60a5fa">${beforeCT.toFixed(1)}초</div>
       <div style="font-size:11px;color:#94a3b8">${beforeMinW}명 · ${beforeLoad}% · ${beforeProd}대/일</div>
     </div>
-    <div style="font-size:22px;color:#475569">→</div>
-    <div style="background:#0f172a;border:1px solid ${afterCT!==beforeCT?'#22c55e':'#334155'};border-radius:8px;padding:10px 14px;text-align:center">
-      <div style="font-size:10px;color:#64748b;margin-bottom:4px">변경 후</div>
-      <div style="font-size:20px;font-weight:800;color:${afterCT>beforeCT?'#f97316':'#34d399'}">${afterCT.toFixed(1)}초</div>
+    <div style="font-size:22px;color:#475569;text-align:center">→</div>
+    <div style="background:#0f172a;border:1px solid ${afterCT<beforeCT?'#22c55e':'#334155'};border-radius:8px;padding:10px 14px;text-align:center">
+      <div style="font-size:10px;color:#64748b;margin-bottom:2px">변경 후</div>
+      <div style="font-size:20px;font-weight:800;color:${afterCT>beforeCT?'#f97316':afterCT<beforeCT?'#34d399':'#e2e8f0'}">${afterCT.toFixed(1)}초</div>
       <div style="font-size:11px;color:#94a3b8">${afterMinW}명 · ${afterLoad}% · ${afterProd}대/일</div>
     </div>
   </div>`;
 
-  // 배분 가능 잔량
-  if(_distSuspended>=0){
-    html+=`<div style="margin-bottom:12px;padding:8px 12px;background:#1c1917;border:1px solid ${remColor};border-radius:6px;font-size:12px;display:flex;align-items:center;gap:10px">
-      <span style="color:#94a3b8">배분 가능 잔량:</span>
-      <span style="font-size:16px;font-weight:800;color:${remColor}">${remaining.toFixed(1)}초</span>
-      ${remaining<0?'<span style="color:#ef4444;font-size:11px">⚠️ 초과 배분됨</span>':''}
-    </div>`;
+  // ── 공정 선택 (중단할 공정)
+  html+=`<div style="margin-bottom:12px">
+    <div style="font-size:11px;color:#64748b;margin-bottom:6px">▸ 중단할 공정 선택</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">`;
+  rows.forEach(({r,i})=>{
+    const sel=i===_distSuspended;
+    html+=`<button onclick="toggleDistSusp(${i},${!sel})"
+      style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;
+        background:${sel?'#7f1d1d':'#1e293b'};border:1px solid ${sel?'#ef4444':'#334155'};
+        color:${sel?'#fca5a5':'#94a3b8'}">${r.name||'공정'+(i+1)} <span style="font-size:10px">${r.ct.toFixed(0)}초</span></button>`;
+  });
+  html+=`</div></div>`;
+
+  if(!suspRow){
+    html+=`<div style="color:#64748b;font-size:12px;padding:20px;text-align:center">중단할 공정을 선택하세요</div>`;
+    document.getElementById('distContent').innerHTML=html;
+    return;
   }
 
-  // 공정 목록 테이블
-  html+=`<table style="width:100%;border-collapse:collapse;font-size:12px">
-    <tr style="background:#20232b;color:#94a3b8">
-      <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #2a2d35">공정</th>
-      <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #2a2d35">현재 C/T</th>
-      <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #2a2d35">중단</th>
-      <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #2a2d35">추가 공수 (초)</th>
-      <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #2a2d35">변경 후 C/T</th>
-    </tr>`;
+  if(suspItems.length===0){
+    html+=`<div style="color:#f59e0b;font-size:12px;padding:12px">⚠️ 선택한 공정에 C/T 계산기 항목이 없습니다. C/T 계산기에서 먼저 공수를 입력해주세요.</div>`;
+    document.getElementById('distContent').innerHTML=html;
+    return;
+  }
 
-  rows.forEach(({r,i})=>{
-    const isSusp=i===_distSuspended;
-    const extra=_distExtra[i]||0;
-    const newCT=isSusp?0:(r.ct+extra);
-    const rowBg=isSusp?'background:#2d0a0a;':'';
-    const nameColor=isSusp?'#ef4444':'#e2e8f0';
-    html+=`<tr style="${rowBg}border-bottom:1px solid #1e2128">
-      <td style="padding:6px 8px;text-align:center;font-weight:700;color:${nameColor}">${r.name||('공정'+(i+1))}</td>
-      <td style="padding:6px 8px;text-align:center;color:#60a5fa">${r.ct.toFixed(1)}초</td>
-      <td style="padding:6px 8px;text-align:center">
-        <input type="checkbox" ${isSusp?'checked':''} onchange="toggleDistSusp(${i},this.checked)"
-          style="width:16px;height:16px;cursor:pointer;accent-color:#ef4444">
-      </td>
-      <td style="padding:4px 6px;text-align:center">
-        ${isSusp
-          ? `<span style="color:#64748b;font-size:11px">— 중단 —</span>`
-          : `<input type="number" value="${extra||''}" placeholder="0" min="0" step="0.1"
-              style="width:70px;padding:3px 6px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#fbbf24;font-weight:700;text-align:center;font-size:12px"
-              onchange="setDistExtra(${i},+this.value)">`
-        }
-      </td>
-      <td style="padding:6px 8px;text-align:center;font-weight:700;color:${extra>0?'#fb923c':isSusp?'#64748b':'#e2e8f0'}">${isSusp?'—':newCT.toFixed(1)+'초'}</td>
-    </tr>`;
+  // ── 항목별 분배 테이블
+  const activeRows=rows.filter(({i})=>i!==_distSuspended);
+  html+=`<div style="font-size:11px;color:#64748b;margin-bottom:6px">▸ 항목별 배분 (갯수 초과 불가)</div>`;
+  html+=`<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;min-width:100%">
+    <tr style="background:#20232b;color:#94a3b8">
+      <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #2a2d35;white-space:nowrap">작업 항목</th>
+      <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #2a2d35">원본</th>`;
+  activeRows.forEach(({r})=>{
+    html+=`<th style="padding:6px 8px;text-align:center;border-bottom:1px solid #2a2d35;white-space:nowrap">${r.name||'공정'}</th>`;
   });
-  html+='</table>';
+  html+=`<th style="padding:6px 8px;text-align:center;border-bottom:1px solid #2a2d35;color:#f59e0b">잔량</th></tr>`;
+
+  suspItems.forEach(it=>{
+    const orig=+(suspF[it.key]||0);
+    const totalAssigned=assignedTotal(it);
+    const rem=orig-totalAssigned;
+    const remColor=rem<0?'#ef4444':rem===0?'#22c55e':'#f59e0b';
+    html+=`<tr style="border-bottom:1px solid #1e2128">
+      <td style="padding:5px 8px;color:#e2e8f0;white-space:nowrap">${it.label} <span style="color:#64748b;font-size:10px">×${it.unit}초</span></td>
+      <td style="padding:5px 8px;text-align:center;font-weight:700;color:#60a5fa">${orig}</td>`;
+    activeRows.forEach(({i})=>{
+      const cur=(_distAssign[it.key]||{})[i]||0;
+      html+=`<td style="padding:3px 5px;text-align:center">
+        <input type="number" value="${cur||''}" placeholder="0" min="0" max="${orig}" step="1"
+          style="width:52px;padding:2px 4px;background:#1e293b;border:1px solid #334155;border-radius:4px;
+            color:#fbbf24;font-weight:700;text-align:center;font-size:12px"
+          oninput="setDistItem('${it.key}',${i},Math.min(+this.value||0,${orig}));this.value=(_distAssign['${it.key}']||{})[${i}]||0;renderDistPanel()">
+      </td>`;
+    });
+    html+=`<td style="padding:5px 8px;text-align:center;font-weight:800;color:${remColor}">${rem}</td></tr>`;
+  });
+  html+=`</table></div>`;
+
+  // ── 공정별 변경 후 C/T 요약
+  html+=`<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">`;
+  activeRows.forEach(({r,i})=>{
+    const extra=extraCTforRow(i);
+    const newCT=r.ct+extra;
+    html+=`<div style="background:#0f172a;border:1px solid ${extra>0?'#fb923c':'#1e293b'};border-radius:6px;padding:6px 10px;text-align:center;font-size:11px">
+      <div style="color:#94a3b8">${r.name||'공정'+(i+1)}</div>
+      <div style="font-weight:700;color:${extra>0?'#fb923c':'#e2e8f0'}">${newCT.toFixed(1)}초</div>
+      ${extra>0?`<div style="color:#64748b;font-size:10px">+${extra.toFixed(1)}</div>`:''}
+    </div>`;
+  });
+  html+=`</div>`;
 
   document.getElementById('distContent').innerHTML=html;
 }
 
-function toggleDistSusp(idx,checked){
-  _distSuspended=checked?idx:-1;
-  if(!checked) delete _distExtra[idx];
+function toggleDistSusp(idx,on){
+  _distSuspended=on?idx:-1;
+  if(!on) _distAssign={};
   renderDistPanel();
 }
-function setDistExtra(idx,val){
-  _distExtra[idx]=val>0?val:0;
-  renderDistPanel();
+function setDistItem(key,toIdx,val){
+  if(!_distAssign[key]) _distAssign[key]={};
+  _distAssign[key][toIdx]=val>0?val:0;
 }
 function applyDist(){
-  // 분배 결과를 실제 CT에 반영
   const rows=_distRows();
   rows.forEach(({r,i})=>{
-    if(i===_distSuspended){r.ct=0;r.empty=true;}
-    else if(_distExtra[i]){r.ct=Math.round((r.ct+_distExtra[i])*10)/10;}
+    if(i===_distSuspended){r.ct=0;r.empty=true;return;}
+    let extra=0;
+    DIST_ITEMS.forEach(it=>{
+      const cnt=(_distAssign[it.key]||{})[i]||0;
+      if(cnt>0){
+        extra+=cnt*it.unit;
+        if(r.ctFormula&&r.ctFormula._type==='line3'){
+          r.ctFormula[it.key]=(+(r.ctFormula[it.key]||0))+cnt;
+        }
+      }
+    });
+    if(extra>0) r.ct=Math.round((r.ct+extra)*10)/10;
   });
   saveScenario&&saveScenario();
   renderTableView&&renderTableView();
