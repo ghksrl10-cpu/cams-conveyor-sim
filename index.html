@@ -1426,7 +1426,7 @@ function openDist(i){
     list.appendChild(div);
   });
   updateDistTotal();
-  document.getElementById('distModal').classList.add('show');
+  document.getElementById('distModal2').classList.add('show');
 }
 function updateDistTotal(){
   const rows=G().rows;
@@ -1476,7 +1476,7 @@ function applyDist(){
   closeDist();
   render();
 }
-function closeDist(){document.getElementById('distModal').classList.remove('show');}
+function closeDist(){document.getElementById('distModal2').classList.remove('show');}
 
 /* ─── 시뮬레이션 ─────────────────────────────── */
 function runSim(){
@@ -3158,7 +3158,7 @@ window.addEventListener('message', e => {
 </div>
 
 <!-- ===== 공수 배분 모달 ===== -->
-<div class="modal-bg" id="distModal" onclick="if(event.target===this)closeDist()">
+<div class="modal-bg" id="distModal2" onclick="if(event.target===this)closeDist()">
   <div class="modal">
     <div id="distLayoutSnap" style="display:none;margin-bottom:12px;border-radius:8px;overflow:hidden">
       <img id="distLayoutImg" style="width:100%;display:block;border-radius:8px;border:1px solid #2a2d35">
