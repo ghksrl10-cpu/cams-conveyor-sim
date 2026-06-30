@@ -2162,7 +2162,7 @@ function renderDistPanel(){
     html+=`<button onclick="toggleDistSusp(${i},${!sel})"
       style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;
         background:${sel?'#7f1d1d':'#1e293b'};border:1px solid ${sel?'#ef4444':'#334155'};
-        color:${sel?'#fca5a5':'#94a3b8'}">${r.name||'공정'+(i+1)} <span style="font-size:10px">${r.ct.toFixed(0)}초</span></button>`;
+        color:${sel?'#fca5a5':'#94a3b8'}">${r.name||'공정'+(i+1)} <span style="font-size:10px">${(+(r.ct||0)).toFixed(0)}초</span></button>`;
   });
   html+=`</div></div>`;
 
@@ -2215,7 +2215,7 @@ function renderDistPanel(){
   html+=`<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">`;
   activeRows.forEach(({r,i})=>{
     const extra=extraCTforRow(i);
-    const newCT=r.ct+extra;
+    const newCT=(+(r.ct||0))+extra;
     html+=`<div style="background:#0f172a;border:1px solid ${extra>0?'#fb923c':'#1e293b'};border-radius:6px;padding:6px 10px;text-align:center;font-size:11px">
       <div style="color:#94a3b8">${r.name||'공정'+(i+1)}</div>
       <div style="font-weight:700;color:${extra>0?'#fb923c':'#e2e8f0'}">${newCT.toFixed(1)}초</div>
