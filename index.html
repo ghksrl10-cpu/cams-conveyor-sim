@@ -1026,7 +1026,7 @@ function render(){
       ${_effTS[di]===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea style="width:100%;height:${span>1?span*52:52}px;max-height:${span>1?span*52:52}px;background:transparent;border:none;color:inherit;font:inherit;resize:none;padding:2px 4px;overflow-y:auto;font-size:12px" oninput="upd(${i},'note',this.value);autoSaveCT()" placeholder="관리항목">${esc(r.note)}</textarea></td>`}
       <td style="text-align:center;white-space:nowrap;vertical-align:middle">
         <button class="btn sml" onclick="insertRow(${i})" style="margin-bottom:3px;width:52px">+ 삽입</button><br>
-        <button class="btn sml" onclick="openDist(${i})" style="margin-bottom:3px;width:52px">🔀 배분</button><br>
+        <button class="btn sml" onclick="curLine===2?openDistPanel('ct'):openDist(${i})" style="margin-bottom:3px;width:52px">🔀 배분</button><br>
         <button class="btn sml warn" onclick="delRow(${i})" style="width:52px">삭제</button>
       </td>`;
     tbody.appendChild(tr);
@@ -2985,7 +2985,7 @@ window.addEventListener('message', e => {
 
 <!-- ===== 공수 분배 모달 ===== -->
 <div class="modal-bg" id="distModal" onclick="if(event.target===this)closeDistPanel()">
-  <div class="modal" style="width:680px;max-height:90vh;overflow-y:auto">
+  <div class="modal" style="width:92vw;max-width:1200px;max-height:92vh;overflow-y:auto">
     <h2>🔀 공수 분배 시뮬레이션</h2>
     <div id="distCanvasSnap" style="margin-bottom:12px;border-radius:8px;overflow:hidden;display:none">
       <img id="distCanvasImg" style="width:100%;display:block;border-radius:8px;border:1px solid #2a2d35">
