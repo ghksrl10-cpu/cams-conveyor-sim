@@ -2054,12 +2054,18 @@ function openDistPanel(tkey){
   _distTkey=tkey||'ct';
   _distSuspended=-1;
   _distAssign={};
-  // 2D 시뮬레이션 캔버스 스냅샷
-  const cv=document.getElementById('cv2d');
+  // 2D 레이아웃 캡처 (먼저 그린 후 스냅샷)
   const snap=document.getElementById('distCanvasSnap');
   const img=document.getElementById('distCanvasImg');
-  if(cv&&snap&&img){
-    try{img.src=cv.toDataURL();snap.style.display='block';}catch(e){snap.style.display='none';}
+  if(snap&&img){
+    try{
+      init2D();
+      const cv=document.getElementById('cv2d');
+      // 캔버스 렌더링 후 다음 프레임에서 캡처
+      requestAnimationFrame(()=>{
+        try{img.src=cv.toDataURL();snap.style.display='block';}catch(e){snap.style.display='none';}
+      });
+    }catch(e){snap.style.display='none';}
   }
   try{renderDistPanel();}catch(e){
     const dc=document.getElementById('distContent');
