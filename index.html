@@ -2076,10 +2076,18 @@ function openDistPanel(tkey){
   document.getElementById('distModal').classList.add('show');
 }
 function _toggleFloatBtns(hide){
-  const fs=document.getElementById('floatSave');
-  const od=document.getElementById('odBtn');
-  if(fs) fs.style.display=hide?'none':(fs._origDisplay||'block');
-  if(od){if(!od._origDisplay)od._origDisplay=od.style.display||'block';od.style.display=hide?'none':od._origDisplay;}
+  // z-index가 높은 고정 버튼 모두 숨김/복원
+  document.querySelectorAll('body > button, body > div > button, #floatSave, #odBtn').forEach(el=>{
+    const s=window.getComputedStyle(el);
+    if(s.position==='fixed'||el.id==='floatSave'||el.id==='odBtn'){
+      el.style.display=hide?'none':(el._origD||'');
+      if(!hide&&el._origD===undefined) el.style.display='';
+      if(hide&&el._origD===undefined) el._origD=el.style.display;
+    }
+  });
+  // distModal z-index 최상위 고정
+  const dm=document.getElementById('distModal');
+  if(dm) dm.style.zIndex=hide?'999999':'';
 }
 function closeDistPanel(){document.getElementById('distModal').classList.remove('show');_toggleFloatBtns(false);}
 function resetDist(){_distSuspended=-1;_distAssign={};renderDistPanel();}
