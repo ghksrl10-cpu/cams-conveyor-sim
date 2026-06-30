@@ -745,7 +745,7 @@ function G(){return state[curLine][curSub];}
 function showView(v){
   // 뷰 전환 시 열린 모달 모두 닫기
   ['distModal','distModal2','ctcModal','ctcModal3'].forEach(id=>{const m=document.getElementById(id);if(m)m.classList.remove('show');});
-  _toggleFloatBtns(false);
+  document.querySelectorAll('#floatSave,#odBtn').forEach(el=>el.style.display='');
   if(v!=='2d'&&typeof _raf2d!=='undefined'&&_raf2d){cancelAnimationFrame(_raf2d);_raf2d=null;}
   document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
