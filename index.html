@@ -2071,9 +2071,16 @@ function openDistPanel(tkey){
     const dc=document.getElementById('distContent');
     if(dc) dc.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:14px">⚠️ 오류: ${e.message}<br><pre style="font-size:11px;margin-top:8px;color:#94a3b8">${e.stack||''}</pre></div>`;
   }
+  _toggleFloatBtns(true);
   document.getElementById('distModal').classList.add('show');
 }
-function closeDistPanel(){document.getElementById('distModal').classList.remove('show');}
+function _toggleFloatBtns(hide){
+  const fs=document.getElementById('floatSave');
+  const od=document.querySelector('[id^="odBtn"],button[style*="OneDrive"],button[style*="bottom:64px"]');
+  if(fs) fs.style.visibility=hide?'hidden':'';
+  if(od) od.style.visibility=hide?'hidden':'';
+}
+function closeDistPanel(){document.getElementById('distModal').classList.remove('show');_toggleFloatBtns(false);}
 function resetDist(){_distSuspended=-1;_distAssign={};renderDistPanel();}
 
 function _distRows(){
