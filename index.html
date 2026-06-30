@@ -2061,17 +2061,18 @@ function openDistPanel(tkey){
     try{
       init2D();
       const cv=document.getElementById('cv2d');
-      // 캔버스 렌더링 후 다음 프레임에서 캡처
       requestAnimationFrame(()=>{
         try{img.src=cv.toDataURL();snap.style.display='block';}catch(e){snap.style.display='none';}
+        _toggleFloatBtns(true);
       });
-    }catch(e){snap.style.display='none';}
+    }catch(e){snap.style.display='none';_toggleFloatBtns(true);}
+  } else {
+    _toggleFloatBtns(true);
   }
   try{renderDistPanel();}catch(e){
     const dc=document.getElementById('distContent');
-    if(dc) dc.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:14px">⚠️ 오류: ${e.message}<br><pre style="font-size:11px;margin-top:8px;color:#94a3b8">${e.stack||''}</pre></div>`;
+    if(dc) dc.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:14px">⚠️ 오류: ${e.message}</div>`;
   }
-  _toggleFloatBtns(true);
   document.getElementById('distModal').classList.add('show');
 }
 function _toggleFloatBtns(hide){
