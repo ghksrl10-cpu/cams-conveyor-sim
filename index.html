@@ -2057,42 +2057,27 @@ function openDistPanel(tkey){
   _distTkey=tkey||'ct';
   _distSuspended=-1;
   _distAssign={};
-  // 2D 레이아웃 캡처 (이미 렌더된 캔버스만 — init2D 재호출 없음)
+  // 캔버스 스냅샷 (이미 렌더된 경우만)
   const snap=document.getElementById('distCanvasSnap');
   const img=document.getElementById('distCanvasImg');
-  if(snap&&img){
-    try{
-      const cv=document.getElementById('cv2d');
-      if(cv&&cv.width>0&&cv.height>0){
-        img.src=cv.toDataURL();
-        snap.style.display='block';
-      }else{
-        snap.style.display='none';
-      }
-    }catch(e){snap.style.display='none';}
-  }
-  _toggleFloatBtns(true);
-  try{renderDistPanel();}catch(e){
-    const dc=document.getElementById('distContent');
-    if(dc) dc.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:14px">⚠️ 오류: ${e.message}</div>`;
-  }
+  try{
+    const cv=document.getElementById('cv2d');
+    if(snap&&img&&cv&&cv.width>0&&cv.height>0){img.src=cv.toDataURL();snap.style.display='block';}
+    else if(snap){snap.style.display='none';}
+  }catch(e){if(snap)snap.style.display='none';}
+  // 고정 버튼 숨김
+  document.querySelectorAll('#floatSave,#odBtn').forEach(el=>el.style.display='none');
+  document.getElementById('distModal').style.zIndex='999999';
+  // 내용 렌더
+  const dc=document.getElementById('distContent');
+  try{renderDistPanel();}catch(e){if(dc)dc.innerHTML=`<div style="color:#ef4444;padding:16px">⚠️ ${e.message}</div>`;}
   document.getElementById('distModal').classList.add('show');
 }
-function _toggleFloatBtns(hide){
-  // z-index가 높은 고정 버튼 모두 숨김/복원
-  document.querySelectorAll('body > button, body > div > button, #floatSave, #odBtn').forEach(el=>{
-    const s=window.getComputedStyle(el);
-    if(s.position==='fixed'||el.id==='floatSave'||el.id==='odBtn'){
-      el.style.display=hide?'none':(el._origD||'');
-      if(!hide&&el._origD===undefined) el.style.display='';
-      if(hide&&el._origD===undefined) el._origD=el.style.display;
-    }
-  });
-  // distModal z-index 최상위 고정
-  const dm=document.getElementById('distModal');
-  if(dm) dm.style.zIndex=hide?'999999':'';
+function closeDistPanel(){
+  document.getElementById('distModal').classList.remove('show');
+  document.getElementById('distModal').style.zIndex='';
+  document.querySelectorAll('#floatSave,#odBtn').forEach(el=>el.style.display='');
 }
-function closeDistPanel(){document.getElementById('distModal').classList.remove('show');_toggleFloatBtns(false);}
 function resetDist(){_distSuspended=-1;_distAssign={};renderDistPanel();}
 
 function _distRows(){
