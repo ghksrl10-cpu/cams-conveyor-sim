@@ -2076,7 +2076,7 @@ function openDistPanel(tkey){
 }
 function _toggleFloatBtns(hide){
   const fs=document.getElementById('floatSave');
-  const od=document.querySelector('[id^="odBtn"],button[style*="OneDrive"],button[style*="bottom:64px"]');
+  const od=document.getElementById('odBtn');
   if(fs) fs.style.visibility=hide?'hidden':'';
   if(od) od.style.visibility=hide?'hidden':'';
 }
@@ -3220,6 +3220,7 @@ window.addEventListener('message', e => {
   async function odLoad(){if(!dir)return null;try{const fh=await dir.getFileHandle(FILE);return JSON.parse(await(await fh.getFile()).text());}catch(e){return null;}}
 
   const btn=document.createElement('button');
+  btn.id='odBtn';
   btn.style.cssText='position:fixed;bottom:64px;right:24px;z-index:9999;padding:6px 14px;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;color:#fff;';
   document.body.appendChild(btn);
 
