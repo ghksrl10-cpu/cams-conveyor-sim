@@ -501,7 +501,6 @@
           <div style="background:#20232b;padding:10px 14px;font-weight:800;font-size:20px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="document.getElementById('overloadBody').style.display=document.getElementById('overloadBody').style.display==='none'?'block':'none'">
             ⚠️ 과부하 · 납품 영향 분석
             <span id="overloadBadge" style="font-size:16px;margin-left:auto"></span>
-            <button onclick="event.stopPropagation();openDistPanel()" style="padding:6px 14px;background:#0f4c81;border:1px solid #1d6fa5;border-radius:6px;color:#93c5fd;font-size:16px;font-weight:700;cursor:pointer">🔀 공수 분배</button>
           </div>
           <div id="overloadBody">
             <div id="overloadContent" style="padding:12px 14px;font-size:20px;line-height:1.7"></div>
@@ -1937,7 +1936,10 @@ function renderOverloadPanel(){
   function renderTable(scList,title,color,isCtBased){
     const tkey=isCtBased?'ct':'cams';
     const FS='font-size:20px';
-    let t=`<div style="margin:0 0 6px;${FS};font-weight:700;color:${color}">${title}</div>`;
+    let t=`<div style="margin:0 0 6px;display:flex;align-items:center;gap:10px">
+      <span style="${FS};font-weight:700;color:${color}">${title}</span>
+      <button onclick="openDistPanel('${tkey}')" style="margin-left:auto;padding:4px 12px;background:#0f4c81;border:1px solid #1d6fa5;border-radius:6px;color:#93c5fd;font-size:15px;font-weight:700;cursor:pointer">🔀 공수 분배</button>
+    </div>`;
     t+=`<table style="width:100%;border-collapse:collapse;${FS};table-layout:fixed">${colgroup}
       <tr style="background:#20232b;color:#94a3b8">
         <th style="padding:8px;text-align:center;border-bottom:1px solid #2a2d35;${FS}">공피치<br><span style="font-weight:400;font-size:14px">공:실제</span></th>
@@ -2042,7 +2044,9 @@ const DIST_ITEMS=[
 let _distSuspended=-1;
 let _distAssign={};  // {itemKey: {toRowIdx: count}}
 
-function openDistPanel(){
+let _distTkey='ct';
+function openDistPanel(tkey){
+  _distTkey=tkey||'ct';
   _distSuspended=-1;
   _distAssign={};
   renderDistPanel();
