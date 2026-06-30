@@ -2049,6 +2049,13 @@ function openDistPanel(tkey){
   _distTkey=tkey||'ct';
   _distSuspended=-1;
   _distAssign={};
+  // 2D 시뮬레이션 캔버스 스냅샷
+  const cv=document.getElementById('cv2d');
+  const snap=document.getElementById('distCanvasSnap');
+  const img=document.getElementById('distCanvasImg');
+  if(cv&&snap&&img){
+    try{img.src=cv.toDataURL();snap.style.display='block';}catch(e){snap.style.display='none';}
+  }
   renderDistPanel();
   document.getElementById('distModal').classList.add('show');
 }
@@ -2972,6 +2979,9 @@ window.addEventListener('message', e => {
 <div class="modal-bg" id="distModal" onclick="if(event.target===this)closeDistPanel()">
   <div class="modal" style="width:680px;max-height:90vh;overflow-y:auto">
     <h2>🔀 공수 분배 시뮬레이션</h2>
+    <div id="distCanvasSnap" style="margin-bottom:12px;border-radius:8px;overflow:hidden;display:none">
+      <img id="distCanvasImg" style="width:100%;display:block;border-radius:8px;border:1px solid #2a2d35">
+    </div>
     <div id="distContent"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button class="btn" onclick="applyDist()" style="background:#0f4c81;border-color:#1d6fa5;color:#93c5fd">✅ 적용 (분석 반영)</button>
