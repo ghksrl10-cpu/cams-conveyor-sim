@@ -2056,7 +2056,10 @@ function openDistPanel(tkey){
   if(cv&&snap&&img){
     try{img.src=cv.toDataURL();snap.style.display='block';}catch(e){snap.style.display='none';}
   }
-  renderDistPanel();
+  try{renderDistPanel();}catch(e){
+    const dc=document.getElementById('distContent');
+    if(dc) dc.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:14px">⚠️ 오류: ${e.message}<br><pre style="font-size:11px;margin-top:8px;color:#94a3b8">${e.stack||''}</pre></div>`;
+  }
   document.getElementById('distModal').classList.add('show');
 }
 function closeDistPanel(){document.getElementById('distModal').classList.remove('show');}
