@@ -2993,8 +2993,8 @@ window.addEventListener('message', e => {
 <div class="modal-bg" id="distModal" onclick="if(event.target===this)closeDistPanel()">
   <div class="modal" style="width:96vw;max-width:1600px;max-height:95vh;overflow-y:auto">
     <h2>🔀 공수 분배 시뮬레이션</h2>
-    <div id="distCanvasSnap" style="margin-bottom:12px;border-radius:8px;overflow:hidden;display:none">
-      <img id="distCanvasImg" style="width:100%;display:block;border-radius:8px;border:1px solid #2a2d35">
+    <div id="distCanvasSnap" style="margin-bottom:12px;border-radius:8px;overflow:hidden;display:none;max-height:45vh">
+      <img id="distCanvasImg" style="width:100%;display:block;border-radius:8px;border:1px solid #2a2d35;max-height:45vh;object-fit:contain">
     </div>
     <div id="distContent"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
