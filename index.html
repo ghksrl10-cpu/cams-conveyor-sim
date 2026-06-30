@@ -1399,6 +1399,11 @@ function closeCTCalc3(){document.getElementById('ctcModal3').classList.remove('s
 /* ─── 공수 배분 ───────────────────────────────── */
 let _distIdx=-1;
 function openDist(i){
+  // 2D 레이아웃 스냅샷
+  const _cv=document.getElementById('cv2d');
+  const _snap=document.getElementById('distLayoutSnap');
+  const _img=document.getElementById('distLayoutImg');
+  if(_cv&&_snap&&_img){try{_img.src=_cv.toDataURL();_snap.style.display='block';}catch(e){_snap.style.display='none';}}
   const rows=G().rows;
   const src=rows[i];
   _distIdx=i;
@@ -3155,6 +3160,9 @@ window.addEventListener('message', e => {
 <!-- ===== 공수 배분 모달 ===== -->
 <div class="modal-bg" id="distModal" onclick="if(event.target===this)closeDist()">
   <div class="modal">
+    <div id="distLayoutSnap" style="display:none;margin-bottom:12px;border-radius:8px;overflow:hidden">
+      <img id="distLayoutImg" style="width:100%;display:block;border-radius:8px;border:1px solid #2a2d35">
+    </div>
     <h2>🔀 공수 재배분</h2>
     <div class="msub">
       <b id="distSrcName"></b> 공정의 C/T
