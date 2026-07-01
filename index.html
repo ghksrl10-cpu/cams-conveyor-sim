@@ -1713,11 +1713,21 @@ function applySimScen(id){
 }
 function _positionDropdown(menu, anchorEl){
   const r=anchorEl.getBoundingClientRect();
+  const spaceBelow=window.innerHeight-r.bottom-8;
+  const spaceAbove=r.top-8;
   menu.style.position='fixed';
-  menu.style.top=(r.bottom+4)+'px';
   menu.style.right=(window.innerWidth-r.right)+'px';
   menu.style.left='auto';
   menu.style.zIndex='9999';
+  if(spaceBelow<150&&spaceAbove>spaceBelow){
+    menu.style.top='auto';
+    menu.style.bottom=(window.innerHeight-r.top+4)+'px';
+    menu.style.maxHeight=Math.min(320,spaceAbove)+'px';
+  }else{
+    menu.style.top=(r.bottom+4)+'px';
+    menu.style.bottom='auto';
+    menu.style.maxHeight=Math.max(120,spaceBelow)+'px';
+  }
 }
 function openScenPicker(){
   const menu=document.getElementById('scenPickMenu');
