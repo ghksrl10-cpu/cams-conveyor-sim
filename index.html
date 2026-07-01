@@ -221,9 +221,7 @@
   body:not(.dark) .dist-row .dadd{background:#fff;color:#111827;border-color:var(--bd)}
   body:not(.dark) .dist-total{background:var(--hd)}
   body:not(.dark) .hamb{background:#fff}
-  body:not(.dark) .nav-item{color:#cbd5e1}
-  body:not(.dark) .nav-item:hover{background:rgba(255,255,255,.12)}
-  body:not(.dark) .nav-group{color:#7fa3c8}
+  body:not(.dark) .nav-item{color:#4b5563}
   body:not(.dark) input,body:not(.dark) select{background:#fff;color:#111827;border-color:var(--bd)}
   body:not(.dark) .sec-h{background:var(--hd);color:var(--ink)}
 </style>
@@ -1687,6 +1685,8 @@ function clearScen(){if(!confirm('모두 삭제?'))return;scenarios=[];localStor
 function openSimScenPicker(){
   const menu=document.getElementById('simScenMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
+  const btn=menu.previousElementSibling;
+  if(btn)_positionDropdown(menu,btn);
   const list=scenarios.filter(s=>s.rows&&s.line===curLine);
   if(!list.length){menu.innerHTML='<div style="padding:12px 14px;color:#64748b;font-size:12px">현재 라인에 저장된 시나리오 없음</div>';menu.style.display='block';return;}
   let html='';
@@ -1711,9 +1711,19 @@ function applySimScen(id){
   document.getElementById('saveNote').textContent='✅ 불러오기 완료';
   setTimeout(()=>document.getElementById('saveNote').textContent='',2000);
 }
+function _positionDropdown(menu, anchorEl){
+  const r=anchorEl.getBoundingClientRect();
+  menu.style.position='fixed';
+  menu.style.top=(r.bottom+4)+'px';
+  menu.style.right=(window.innerWidth-r.right)+'px';
+  menu.style.left='auto';
+  menu.style.zIndex='9999';
+}
 function openScenPicker(){
   const menu=document.getElementById('scenPickMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
+  const btn=document.querySelector('#scenPickWrap > button');
+  if(btn)_positionDropdown(menu,btn);
   const list=scenarios.filter(s=>s.rows);
   if(!list.length){menu.innerHTML='<div style="padding:12px 14px;color:#64748b;font-size:12px">저장된 2D 시나리오 없음</div>';menu.style.display='block';return;}
   let html='';
@@ -3313,18 +3323,6 @@ window.addEventListener('message', e => {
 
   const _origSet=localStorage.setItem.bind(localStorage);
   localStorage.setItem=function(k,v){_origSet(k,v);if(k&&k.startsWith('conv_'))odSave();};
-
-  window.parent.postMessage({ type: 'cams_request_theme' }, '*');
-
-  // localStorage 동기화 (postMessage 실패 시 백업)
-  (function(){
-    const k = 'cams_dark_mode';
-    const cur = localStorage.getItem(k);
-    if (cur === 'true') document.body.classList.add('dark');
-    window.addEventListener('storage', e => {
-      if (e.key === k) document.body.classList.toggle('dark', e.newValue === 'true');
-    });
-  })();
 })();
 </script>
 </body>
