@@ -1712,21 +1712,22 @@ function applySimScen(id){
   setTimeout(()=>document.getElementById('saveNote').textContent='',2000);
 }
 function _positionDropdown(menu, anchorEl){
+  if(menu.parentElement!==document.body)document.body.appendChild(menu);
   const r=anchorEl.getBoundingClientRect();
   const spaceBelow=window.innerHeight-r.bottom-8;
   const spaceAbove=r.top-8;
   menu.style.position='fixed';
   menu.style.right=(window.innerWidth-r.right)+'px';
   menu.style.left='auto';
-  menu.style.zIndex='9999';
+  menu.style.zIndex='999999';
   if(spaceBelow<150&&spaceAbove>spaceBelow){
     menu.style.top='auto';
     menu.style.bottom=(window.innerHeight-r.top+4)+'px';
-    menu.style.maxHeight=Math.min(320,spaceAbove)+'px';
+    menu.style.maxHeight=Math.min(400,spaceAbove)+'px';
   }else{
     menu.style.top=(r.bottom+4)+'px';
     menu.style.bottom='auto';
-    menu.style.maxHeight=Math.max(120,spaceBelow)+'px';
+    menu.style.maxHeight=Math.max(200,spaceBelow)+'px';
   }
 }
 function openScenPicker(){
