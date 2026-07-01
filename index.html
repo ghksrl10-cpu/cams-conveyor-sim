@@ -338,6 +338,10 @@
       <span class="grow"></span>
       <button class="btn pri" onclick="runSim()">▶ 시뮬레이션</button>
       <button class="btn" onclick="saveScenario()">💾 저장</button>
+      <div style="position:relative;display:inline-block">
+        <button class="btn" style="background:#1e2d1e;border-color:#166534;color:#4ade80" onclick="openSimScenPicker();event.stopPropagation()">📋 불러오기 ▼</button>
+        <div id="simScenMenu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#1a1d24;border:1px solid #2a2d35;border-radius:8px;min-width:260px;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,0.6);max-height:320px;overflow-y:auto"></div>
+      </div>
       <span class="save-note" id="saveNote" style="margin-left:6px"></span>
     </div>
 
@@ -511,7 +515,7 @@
         <label class="btn" style="font-size:13px;padding:6px 14px;cursor:pointer">📂 가져오기<input type="file" accept=".json" style="display:none" onchange="importSimConfig(this)"></label>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="gotoSim(2)">📋 공정입력</button>
       </div>
-      <script>document.addEventListener('click',()=>{['recoverMenu','scenPickMenu'].forEach(id=>{const m=document.getElementById(id);if(m)m.style.display='none';});});</script>
+      <script>document.addEventListener('click',()=>{['recoverMenu','scenPickMenu','simScenMenu'].forEach(id=>{const m=document.getElementById(id);if(m)m.style.display='none';});});</script>
     </div>
     <div style="padding:12px 16px 16px">
       <canvas id="cv2d" style="display:block;width:100%;border-radius:8px;background:#0f172a"></canvas>
@@ -1680,6 +1684,33 @@ function renderScen(){
 }
 function delScen(id){scenarios=scenarios.filter(s=>s.id!==id);localStorage.setItem('conv_scen4',JSON.stringify(scenarios));renderScen();}
 function clearScen(){if(!confirm('모두 삭제?'))return;scenarios=[];localStorage.setItem('conv_scen4','[]');renderScen();}
+function openSimScenPicker(){
+  const menu=document.getElementById('simScenMenu');
+  if(menu.style.display==='block'){menu.style.display='none';return;}
+  const list=scenarios.filter(s=>s.rows&&s.line===curLine);
+  if(!list.length){menu.innerHTML='<div style="padding:12px 14px;color:#64748b;font-size:12px">현재 라인에 저장된 시나리오 없음</div>';menu.style.display='block';return;}
+  let html='';
+  list.slice().reverse().forEach(s=>{
+    html+=`<div style="padding:10px 14px;border-bottom:1px solid #2a2d35;cursor:pointer;transition:background 0.15s"
+      onmouseover="this.style.background='#1e2d3d'" onmouseout="this.style.background=''"
+      onclick="document.getElementById('simScenMenu').style.display='none';applySimScen(${s.id})">
+      <div style="font-weight:700;color:#e2e8f0;font-size:13px">${esc(s.name)}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">${s.at} &nbsp;|&nbsp; 공피치 ${s.ratio||'-'} &nbsp;|&nbsp; 일 ${s.daily}대</div>
+    </div>`;
+  });
+  menu.innerHTML=html;
+  menu.style.display='block';
+}
+function applySimScen(id){
+  const sc=scenarios.find(s=>s.id===id);
+  if(!sc||!sc.rows){alert('공정 데이터가 없는 시나리오입니다.');return;}
+  if(!confirm(`[${sc.name}] 시나리오를 불러옵니다. 현재 데이터가 덮어씌워집니다. 계속할까요?`))return;
+  state[curLine][curSub].rows=JSON.parse(JSON.stringify(sc.rows));
+  localStorage.setItem('conv_struct_'+curLine+'_'+curSub,JSON.stringify(sc.rows));
+  loadLineData();
+  document.getElementById('saveNote').textContent='✅ 불러오기 완료';
+  setTimeout(()=>document.getElementById('saveNote').textContent='',2000);
+}
 function openScenPicker(){
   const menu=document.getElementById('scenPickMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
