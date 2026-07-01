@@ -3284,6 +3284,16 @@ window.addEventListener('message', e => {
   localStorage.setItem=function(k,v){_origSet(k,v);if(k&&k.startsWith('conv_'))odSave();};
 
   window.parent.postMessage({ type: 'cams_request_theme' }, '*');
+
+  // localStorage 동기화 (postMessage 실패 시 백업)
+  (function(){
+    const k = 'cams_dark_mode';
+    const cur = localStorage.getItem(k);
+    if (cur === 'true') document.body.classList.add('dark');
+    window.addEventListener('storage', e => {
+      if (e.key === k) document.body.classList.toggle('dark', e.newValue === 'true');
+    });
+  })();
 })();
 </script>
 </body>
