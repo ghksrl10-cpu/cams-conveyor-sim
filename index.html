@@ -3282,6 +3282,8 @@ window.addEventListener('message', e => {
 
   const _origSet=localStorage.setItem.bind(localStorage);
   localStorage.setItem=function(k,v){_origSet(k,v);if(k&&k.startsWith('conv_'))odSave();};
+
+  window.parent.postMessage({ type: 'cams_request_theme' }, '*');
 })();
 </script>
 </body>
