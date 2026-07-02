@@ -1724,13 +1724,37 @@ function openSimScenPicker(){
 }
 function applySimScen(id){
   const sc=scenarios.find(s=>s.id===id);
-  if(!sc||!sc.rows){alert('공정 데이터가 없는 시나리오입니다.');return;}
-  if(!confirm(`[${sc.name}] 시나리오를 불러옵니다. 현재 데이터가 덮어씌워집니다. 계속할까요?`))return;
-  state[curLine][curSub].rows=JSON.parse(JSON.stringify(sc.rows));
-  localStorage.setItem('conv_struct_'+curLine+'_'+curSub,JSON.stringify(sc.rows));
-  loadLineData();
-  document.getElementById('saveNote').textContent='✅ 불러오기 완료';
-  setTimeout(()=>document.getElementById('saveNote').textContent='',2000);
+  if(!sc||!sc.rows){_toast('공정 데이터가 없는 시나리오입니다.');return;}
+  _confirm(`[${sc.name}] 불러오면 현재 데이터가 덮어씌워집니다. 계속할까요?`,()=>{
+    state[curLine][curSub].rows=JSON.parse(JSON.stringify(sc.rows));
+    localStorage.setItem('conv_struct_'+curLine+'_'+curSub,JSON.stringify(sc.rows));
+    if(sc.ratio){const n=parseInt(sc.ratio);if(!isNaN(n)){document.getElementById('pitchRatio').value=n;}}
+    if(sc.base){document.getElementById('baseProd').value=sc.base;}
+    loadLineData();
+    calcPitch();
+    document.getElementById('saveNote').textContent='✅ 불러오기 완료';
+    setTimeout(()=>document.getElementById('saveNote').textContent='',2000);
+  });
+}
+function _toast(msg){
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e2d3d;color:#e2e8f0;padding:10px 20px;border-radius:8px;font-size:13px;z-index:999999;box-shadow:0 4px 12px rgba(0,0,0,0.5)';
+  d.textContent=msg;document.body.appendChild(d);
+  setTimeout(()=>d.remove(),3000);
+}
+function _confirm(msg,onOk){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center';
+  ov.innerHTML=`<div style="background:#1a1d24;border:1px solid #2a2d35;border-radius:12px;padding:24px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.6)">
+    <div style="font-size:14px;color:#e2e8f0;margin-bottom:18px;line-height:1.5">${msg}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="_cfmNo" style="padding:8px 16px;border:1px solid #3a3d4a;border-radius:8px;background:transparent;color:#9ca3af;cursor:pointer;font-size:13px">취소</button>
+      <button id="_cfmOk" style="padding:8px 16px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:600">확인</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#_cfmNo').addEventListener('click',()=>ov.remove());
+  ov.querySelector('#_cfmOk').addEventListener('click',()=>{ov.remove();onOk();});
 }
 function _positionDropdown(menu, anchorEl){
   if(menu.parentElement!==document.body)document.body.appendChild(menu);
@@ -1773,7 +1797,7 @@ function openScenPicker(){
 function apply2DScen(id){
   const sc=scenarios.find(s=>s.id===id);
   if(!sc){return;}
-  if(!sc.rows){alert('이 시나리오는 공정 데이터 없이 저장됐습니다.\n다시 저장하면 2D로 볼 수 있습니다.');return;}
+  if(!sc.rows){_toast('이 시나리오는 공정 데이터 없이 저장됐습니다.');return;}
   state[sc.line||2][sc.sub||0].rows=JSON.parse(JSON.stringify(sc.rows));
   localStorage.setItem('conv_struct_'+(sc.line||2)+'_'+(sc.sub||0),JSON.stringify(sc.rows));
   curLine=sc.line||2;curSub=sc.sub||0;
