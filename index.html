@@ -1058,7 +1058,7 @@ function render(){
       ${_effTS[di]===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea style="width:100%;height:${span>1?span*52:52}px;max-height:${span>1?span*52:52}px;background:transparent;border:none;color:inherit;font:inherit;resize:none;padding:2px 4px;overflow-y:auto;font-size:12px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
       <td style="background:${r.empty?'#1a1040':'var(--hd2)'};text-align:center"><input type="checkbox" ${r.empty?'checked':''} onchange="toggleEmpty(${i},this.checked)"></td>
       ${_effCS[di]===0?'':`<td class="${r.empty?'off':ctCls}" ${_effCS[di]>1?`rowspan="${_effCS[di]}" style="vertical-align:middle;padding:2px 4px"`:'style="padding:2px 4px"'}><div style="display:flex;align-items:center;gap:2px"><input type="number" value="${r.ct||''}" min="0" step="0.1" onchange="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0" style="flex:1;width:0;min-width:0;text-align:right;font-size:13px"><button class="btn" onclick="openCTCalc(${i})" style="padding:2px 4px;font-size:14px;line-height:1;flex-shrink:0;background:transparent;border-color:#334155" ${r.empty?'disabled':''}>🧮</button></div></td>`}
-      ${_effWS[di]===0?'':`<td class="${offC}" ${_effWS[di]>1?`rowspan="${_effWS[di]}" style="vertical-align:middle;text-align:center"`:''}><div style="display:flex;align-items:center;gap:2px;justify-content:center"><input type="number" value="${r.workers}" min="0" onchange="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''} style="width:44px;text-align:right"><button onclick="toggleSync(${i})" title="동시작업: 인원이 나눠서 작업하지 않고 함께 작업" style="padding:1px 5px;font-size:11px;border-radius:4px;border:1px solid ${r.sync?'#2563eb':'#334155'};background:${r.sync?'#2563eb':'transparent'};color:${r.sync?'#fff':'#64748b'};cursor:pointer;flex-shrink:0" ${r.empty?'disabled':''}>동시</button></div></td>`}
+      ${_effWS[di]===0?'':`<td class="${offC}" ${_effWS[di]>1?`rowspan="${_effWS[di]}" style="vertical-align:middle;text-align:center"`:''}><input type="number" value="${r.workers}" min="0" onchange="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>`}
       ${_effTS[di]===0?'':`<td class="val ${r.empty?'off':ctCls}" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${r.empty?'var(--mut)':''}"`:''}>${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>`}
       ${_effTS[di]===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
       ${_effTS[di]===0?'':(curLine===2?`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle;padding:6px 8px"`:'style="padding:6px 8px"'}><div style="display:flex;flex-direction:column;gap:5px">
@@ -1367,6 +1367,7 @@ function openCTCalc3(i){
   document.getElementById('ctcShex').value=r.fShex||0;
   document.getElementById('ctcBhex').value=r.fBhex||0;
   document.getElementById('ctcFastenerNote3').style.display='none';
+  document.getElementById('ctcSync3').checked=!!(r.sync);
   calcCTC3();
   document.getElementById('ctcModal3').classList.add('show');
 }
@@ -1434,6 +1435,7 @@ function applyCTC3(){
   row.ctFormula=collectFormula3();
   const v=id=>+(document.getElementById(id)?.value||0);
   row.fNut=v('ctcNut');row.fScrew=v('ctcScrew');row.fShex=v('ctcShex');row.fBhex=v('ctcBhex');
+  row.sync=document.getElementById('ctcSync3').checked;
   autoSaveCT();
   autoSaveWorkers();
   closeCTCalc3();
@@ -3292,8 +3294,17 @@ window.addEventListener('message', e => {
       </div>
     </div>
 
+    <!-- 동시작업 -->
+    <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 14px;background:#0f1117;border:1px solid #2a2d35;border-radius:8px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#e2e8f0">
+        <input type="checkbox" id="ctcSync3" onchange="calcCTC3()" style="width:16px;height:16px;cursor:pointer">
+        동시작업
+      </label>
+      <span style="font-size:12px;color:#64748b">체크 시 인원수로 나누지 않고 C/T 그대로 적용 (두 명이 같은 동작을 동시에 수행)</span>
+    </div>
+
     <!-- 결과 -->
-    <div class="dist-total" style="margin-top:18px">
+    <div class="dist-total" style="margin-top:14px">
       <span style="font-size:15px;font-weight:700">계산 결과</span>
       <b id="ctcResult3" style="font-size:24px;color:var(--ok)">0.0초</b>
     </div>
