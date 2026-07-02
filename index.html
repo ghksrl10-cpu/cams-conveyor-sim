@@ -2405,11 +2405,11 @@ function applyDist(){
     });
     if(extra>0) r.ct=Math.round((r.ct+extra)*10)/10;
   });
-  saveScenario&&saveScenario();
+  autoSaveCT&&autoSaveCT();
   renderTableView&&renderTableView();
   renderOverloadPanel();
   closeDistPanel();
-  alert('✅ 공수 분배가 공정입력에 반영됐습니다.');
+  _toast('✅ 공수 분배가 공정입력에 반영됐습니다.');
 }
 
 function init2D(){
