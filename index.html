@@ -780,6 +780,7 @@ const state=LINE_DEF.map((l,li)=>l.subs.map((_,si)=>({rows:makeRows(li,si)})));
 let curLine=0,curSub=0;
 let scenarios=JSON.parse(localStorage.getItem('conv_scen4')||'[]');
 function G(){return state[curLine][curSub];}
+var _currentUser={name:'',dept:''};
 
 /* ─── 뷰 전환 ────────────────────────────────── */
 function showView(v){
@@ -1037,7 +1038,7 @@ function render(){
     // 개별 공정: 실C/T = C/T ÷ 인원
     const groupCT=r.ct;
     const effectivePitch=pitch*origSpan; // 작업자 허용시간 = 공피치 × 공정 수
-    const realCT=groupCT>0?(isGroup?groupCT:groupCT/(r.workers||1)):0;
+    const realCT=groupCT>0?(isGroup||r.sync?groupCT:groupCT/(r.workers||1)):0;
     const load=realCT>0?realCT/effectivePitch*100:0;
     const slackPct=realCT>0?((effectivePitch-realCT)/effectivePitch*100).toFixed(1):null;
     let ctCls='';
@@ -1057,7 +1058,7 @@ function render(){
       ${_effTS[di]===0?'':`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle"`:''}><textarea style="width:100%;height:${span>1?span*52:52}px;max-height:${span>1?span*52:52}px;background:transparent;border:none;color:inherit;font:inherit;resize:none;padding:2px 4px;overflow-y:auto;font-size:12px" oninput="upd(${i},'task',this.value)" placeholder="${r.empty?'(공백)':'조립 내용 입력'}">${esc(r.task)}</textarea></td>`}
       <td style="background:${r.empty?'#1a1040':'var(--hd2)'};text-align:center"><input type="checkbox" ${r.empty?'checked':''} onchange="toggleEmpty(${i},this.checked)"></td>
       ${_effCS[di]===0?'':`<td class="${r.empty?'off':ctCls}" ${_effCS[di]>1?`rowspan="${_effCS[di]}" style="vertical-align:middle;padding:2px 4px"`:'style="padding:2px 4px"'}><div style="display:flex;align-items:center;gap:2px"><input type="number" value="${r.ct||''}" min="0" step="0.1" onchange="updNum(${i},'ct',+this.value)" ${r.empty?'disabled':''} placeholder="0" style="flex:1;width:0;min-width:0;text-align:right;font-size:13px"><button class="btn" onclick="openCTCalc(${i})" style="padding:2px 4px;font-size:14px;line-height:1;flex-shrink:0;background:transparent;border-color:#334155" ${r.empty?'disabled':''}>🧮</button></div></td>`}
-      ${_effWS[di]===0?'':`<td class="${offC}" ${_effWS[di]>1?`rowspan="${_effWS[di]}" style="vertical-align:middle;text-align:center"`:''}><input type="number" value="${r.workers}" min="0" onchange="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''}></td>`}
+      ${_effWS[di]===0?'':`<td class="${offC}" ${_effWS[di]>1?`rowspan="${_effWS[di]}" style="vertical-align:middle;text-align:center"`:''}><div style="display:flex;align-items:center;gap:2px;justify-content:center"><input type="number" value="${r.workers}" min="0" onchange="updNum(${i},'workers',+this.value)" ${r.empty?'disabled':''} style="width:44px;text-align:right"><button onclick="toggleSync(${i})" title="동시작업: 인원이 나눠서 작업하지 않고 함께 작업" style="padding:1px 5px;font-size:11px;border-radius:4px;border:1px solid ${r.sync?'#2563eb':'#334155'};background:${r.sync?'#2563eb':'transparent'};color:${r.sync?'#fff':'#64748b'};cursor:pointer;flex-shrink:0" ${r.empty?'disabled':''}>동시</button></div></td>`}
       ${_effTS[di]===0?'':`<td class="val ${r.empty?'off':ctCls}" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${r.empty?'var(--mut)':''}"`:''}>${r.empty?'공백':realCT>0?realCT.toFixed(1)+'초':''}</td>`}
       ${_effTS[di]===0?'':`<td class="val" ${span>1?`rowspan="${span}" style="vertical-align:middle;text-align:center;color:${slColor}"`:`style="color:${slColor}"`}>${r.empty?'—':slackPct!==null?slackPct+'%':''}</td>`}
       ${_effTS[di]===0?'':(curLine===2?`<td class="ltxt ${emC}" ${span>1?`rowspan="${span}" style="vertical-align:middle;padding:6px 8px"`:'style="padding:6px 8px"'}><div style="display:flex;flex-direction:column;gap:5px">
@@ -1215,6 +1216,7 @@ function loadLineData(){
 }
 function saveLineData(){saveCTData();}
 function toggleEmpty(i,v){G().rows[i].empty=v;saveRowStructure();render();}
+function toggleSync(i){const r=G().rows[i];r.sync=!r.sync;saveRowStructure();render();}
 function addRow(){const s=G();s.rows.push({conv:s.rows.length+1,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});saveRowStructure();render();}
 function insertRow(i){const s=G();s.rows.splice(i,0,{conv:0,name:'',task:'',empty:false,ct:0,workers:1,group:'',fastener:'',note:'',fNut:0,fScrew:0,fShex:0,fBhex:0});s.rows.forEach((r,idx)=>r.conv=idx+1);saveRowStructure();render();}
 let _delUndo=null;
@@ -1532,7 +1534,7 @@ function runSim(){
   const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
   const active=s.rows.filter(r=>!r.empty&&r.ct>0);
   if(!active.length){alert('C/T가 입력된 유효 공정이 없습니다.');return;}
-  const res=active.map(r=>{const sp=(r.taskSpan||1);const ep=pitch*sp;const rt=(sp>1)?r.ct:r.ct/(r.workers||1);const rpp=rt/sp;return{...r,realCT:rt,effPitch:ep,rpp,load:rt/ep*100,isBN:rt>ep};});
+  const res=active.map(r=>{const sp=(r.taskSpan||1);const ep=pitch*sp;const rt=(sp>1)||r.sync?r.ct:r.ct/(r.workers||1);const rpp=rt/sp;return{...r,realCT:rt,effPitch:ep,rpp,load:rt/ep*100,isBN:rt>ep};});
   const bn=res.reduce((a,b)=>a.rpp>b.rpp?a:b); // 병목: 컨베어 위치당 점유시간 기준
   const bnRate=Math.max(bn.rpp,pitch); // 컨베이어 피치 이상이어야 의미있음
   const lbEff=res.reduce((a,r)=>a+r.realCT,0)/(bn.realCT*res.length)*100;
@@ -1666,7 +1668,7 @@ function saveScenario(){
       const n=+document.getElementById('pitchRatio').value||1,base=+document.getElementById('baseProd').value||205;
       const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
       const active=s.rows.filter(r=>!r.empty&&r.ct>0);
-      let bnCT=0;const pc=active.map(r=>{const sp=(r.taskSpan||1);const rt=(sp>1)?r.ct:r.ct/(r.parallel||1)/(r.workers||1);if(rt>bnCT)bnCT=rt;return rt;});
+      let bnCT=0;const pc=active.map(r=>{const sp=(r.taskSpan||1);const rt=(sp>1)||r.sync?r.ct:r.ct/(r.parallel||1)/(r.workers||1);if(rt>bnCT)bnCT=rt;return rt;});
       const uph=bnCT>0?Math.round(3600/bnCT):0,daily=bnCT>0?Math.floor(wm*60/bnCT):0;
       const lb=active.length>0?pc.reduce((a,v)=>a+v,0)/(bnCT*active.length)*100:0;
       const rowsSnap=JSON.parse(JSON.stringify(s.rows));
@@ -2973,8 +2975,6 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
   else if(lv==='2d'){showView('2d');}
   else{showView(lv);}
 })();
-
-var _currentUser = { name: '', dept: '' };
 
 window.addEventListener('message', e => {
   if (!e.data) return;
