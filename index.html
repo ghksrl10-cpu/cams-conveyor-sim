@@ -1708,14 +1708,15 @@ function openSimScenPicker(){
   if(menu.style.display==='block'){menu.style.display='none';return;}
   const btn=menu.previousElementSibling;
   if(btn)_positionDropdown(menu,btn);
-  const list=scenarios.filter(s=>s.rows&&s.line===curLine);
-  if(!list.length){menu.innerHTML='<div style="padding:12px 14px;color:#64748b;font-size:12px">현재 라인에 저장된 시나리오 없음</div>';menu.style.display='block';return;}
+  const list=scenarios.filter(s=>s.rows&&s.rows.length);
+  if(!list.length){menu.innerHTML='<div style="padding:12px 14px;color:#64748b;font-size:12px">저장된 시나리오 없음</div>';menu.style.display='block';return;}
   let html='';
   list.slice().reverse().forEach(s=>{
+    const lineName=s.lbl||'';
     html+=`<div style="padding:10px 14px;border-bottom:1px solid #2a2d35;cursor:pointer;transition:background 0.15s"
       onmouseover="this.style.background='#1e2d3d'" onmouseout="this.style.background=''"
       onclick="document.getElementById('simScenMenu').style.display='none';applySimScen(${s.id})">
-      <div style="font-weight:700;color:#e2e8f0;font-size:13px">${esc(s.name)}</div>
+      <div style="font-weight:700;color:#e2e8f0;font-size:13px">${esc(s.name)}${lineName?` <span style="font-size:10px;color:#60a5fa;font-weight:400">${esc(lineName)}</span>`:''}</div>
       <div style="font-size:11px;color:#64748b;margin-top:2px">${s.at} &nbsp;|&nbsp; 공피치 ${s.ratio||'-'} &nbsp;|&nbsp; 일 ${s.daily}대</div>
     </div>`;
   });
