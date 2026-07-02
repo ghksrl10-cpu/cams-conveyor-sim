@@ -1661,19 +1661,21 @@ function saveScenario(){
     const name=inp.value.trim();
     if(!name)return;
     ov.remove();
-    const s=G(),pitch=getPitchSec(),wm=+document.getElementById('workMin').value||460;
-    const n=+document.getElementById('pitchRatio').value||1,base=+document.getElementById('baseProd').value||205;
-    const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
-    const active=s.rows.filter(r=>!r.empty&&r.ct>0);
-    let bnCT=0;const pc=active.map(r=>{const sp=(r.taskSpan||1);const rt=(sp>1)?r.ct:r.ct/(r.parallel||1)/(r.workers||1);if(rt>bnCT)bnCT=rt;return rt;});
-    const uph=bnCT>0?Math.round(3600/bnCT):0,daily=bnCT>0?Math.floor(wm*60/bnCT):0;
-    const lb=active.length>0?pc.reduce((a,v)=>a+v,0)/(bnCT*active.length)*100:0;
-    const rowsSnap=JSON.parse(JSON.stringify(s.rows));
-    scenarios.push({id:Date.now(),name,lbl,ratio:n+':1',base,pitch:pitch.toFixed(1),cnt:active.length,uph,daily,lb:lb.toFixed(1),bnCT:bnCT.toFixed(1),at:new Date().toLocaleString('ko'),savedBy:_currentUser.name||'',rows:rowsSnap,line:curLine,sub:curSub});
-    localStorage.setItem('conv_scen4',JSON.stringify(scenarios));
-    if(typeof _simPushCloud==='function')_simPushCloud();
-    document.getElementById('saveNote').innerHTML='<b>저장됨</b> · '+name;
-    setTimeout(()=>document.getElementById('saveNote').textContent='',3000);
+    try{
+      const s=G(),pitch=getPitchSec(),wm=+document.getElementById('workMin').value||460;
+      const n=+document.getElementById('pitchRatio').value||1,base=+document.getElementById('baseProd').value||205;
+      const lbl=LINE_DEF[curLine].name+' '+LINE_DEF[curLine].subs[curSub];
+      const active=s.rows.filter(r=>!r.empty&&r.ct>0);
+      let bnCT=0;const pc=active.map(r=>{const sp=(r.taskSpan||1);const rt=(sp>1)?r.ct:r.ct/(r.parallel||1)/(r.workers||1);if(rt>bnCT)bnCT=rt;return rt;});
+      const uph=bnCT>0?Math.round(3600/bnCT):0,daily=bnCT>0?Math.floor(wm*60/bnCT):0;
+      const lb=active.length>0?pc.reduce((a,v)=>a+v,0)/(bnCT*active.length)*100:0;
+      const rowsSnap=JSON.parse(JSON.stringify(s.rows));
+      scenarios.push({id:Date.now(),name,lbl,ratio:n+':1',base,pitch:pitch.toFixed(1),cnt:active.length,uph,daily,lb:lb.toFixed(1),bnCT:bnCT.toFixed(1),at:new Date().toLocaleString('ko'),savedBy:(_currentUser&&_currentUser.name)||'',rows:rowsSnap,line:curLine,sub:curSub});
+      localStorage.setItem('conv_scen4',JSON.stringify(scenarios));
+      if(typeof _simPushCloud==='function')_simPushCloud();
+      document.getElementById('saveNote').innerHTML='<b>저장됨</b> · '+name;
+      setTimeout(()=>document.getElementById('saveNote').textContent='',3000);
+    }catch(e){_toast('저장 오류: '+e.message);}
   };
   ov.querySelector('#_scenSaveBtn').addEventListener('click',doSave);
   inp.addEventListener('keydown',e=>{if(e.key==='Enter')doSave();if(e.key==='Escape')ov.remove();});
