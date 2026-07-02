@@ -1735,14 +1735,14 @@ function openScenPicker(){
   if(menu.style.display==='block'){menu.style.display='none';return;}
   const btn=document.querySelector('#scenPickWrap > button');
   if(btn)_positionDropdown(menu,btn);
-  const list=scenarios.filter(s=>s.rows);
-  if(!list.length){menu.innerHTML='<div style="padding:12px 14px;color:#64748b;font-size:12px">저장된 2D 시나리오 없음</div>';menu.style.display='block';return;}
+  const list=scenarios.slice();
+  if(!list.length){menu.innerHTML='<div style="padding:12px 14px;color:#64748b;font-size:12px">저장된 시나리오 없음</div>';menu.style.display='block';return;}
   let html='';
   list.slice().reverse().forEach(s=>{
-    html+=`<div style="padding:10px 14px;border-bottom:1px solid #2a2d35;cursor:pointer;transition:background 0.15s"
-      onmouseover="this.style.background='#1e2d3d'" onmouseout="this.style.background=''"
-      onclick="document.getElementById('scenPickMenu').style.display='none';apply2DScen(${s.id})">
-      <div style="font-weight:700;color:#e2e8f0;font-size:13px">${esc(s.name)}</div>
+    const hasRows=!!(s.rows&&s.rows.length);
+    html+=`<div style="padding:10px 14px;border-bottom:1px solid #2a2d35;cursor:${hasRows?'pointer':'default'};transition:background 0.15s;opacity:${hasRows?1:0.45}"
+      ${hasRows?`onmouseover="this.style.background='#1e2d3d'" onmouseout="this.style.background=''" onclick="document.getElementById('scenPickMenu').style.display='none';apply2DScen(${s.id})"`:''}>
+      <div style="font-weight:700;color:#e2e8f0;font-size:13px">${esc(s.name)}${hasRows?'':' <span style="font-size:10px;color:#64748b">(공정없음)</span>'}</div>
       <div style="font-size:11px;color:#64748b;margin-top:2px">${s.at} &nbsp;|&nbsp; 공피치 ${s.ratio||'-'} &nbsp;|&nbsp; 일 ${s.daily}대</div>
     </div>`;
   });
