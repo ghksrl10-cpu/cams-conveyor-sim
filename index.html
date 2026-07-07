@@ -955,6 +955,7 @@ function calcPitch(){
   document.getElementById('targetUPH').value=uph;
   const label=n===0?'공피치 없음':n+':1';
   document.getElementById('uphHint').textContent='→ 실생산 '+actualProd+'대/일 · '+label+' · 피치 '+pitchSec+'초';
+  if(typeof renderOverloadPanel==='function')renderOverloadPanel();
 }
 function syncFromUPH(){
   const uph=+document.getElementById('targetUPH').value||1;
