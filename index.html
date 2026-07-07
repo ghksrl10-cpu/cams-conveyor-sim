@@ -1741,6 +1741,7 @@ function applySimScen(id){
     if(sc.base){document.getElementById('baseProd').value=sc.base;}
     loadLineData();
     calcPitch();
+    if(typeof init2D==='function')init2D();
     document.getElementById('saveNote').textContent='✅ 불러오기 완료';
     setTimeout(()=>document.getElementById('saveNote').textContent='',2000);
   });
@@ -1810,6 +1811,9 @@ function apply2DScen(id){
   state[sc.line||2][sc.sub||0].rows=JSON.parse(JSON.stringify(sc.rows));
   localStorage.setItem('conv_struct_'+(sc.line||2)+'_'+(sc.sub||0),JSON.stringify(sc.rows));
   curLine=sc.line||2;curSub=sc.sub||0;
+  if(sc.ratio){const n=parseInt(sc.ratio);if(!isNaN(n))document.getElementById('pitchRatio').value=n;}
+  if(sc.base)document.getElementById('baseProd').value=sc.base;
+  calcPitch();
   goto2D();
 }
 
