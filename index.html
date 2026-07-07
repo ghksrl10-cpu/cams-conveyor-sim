@@ -262,6 +262,14 @@
     <div class="nav-item" id="nl3" onclick="gotoSim(3)"><span class="ic">🏗</span> 함평</div>
     <div class="nav-item" id="nl4" onclick="gotoSim(4)"><span class="ic">🏗</span> 전주</div>
   </nav>
+  <div style="padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08)">
+    <span style="font-size:12px;color:#64748b">다크모드</span>
+    <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
+      <input type="checkbox" id="darkToggle" onchange="(function(){const on=document.getElementById('darkToggle').checked;document.body.classList.toggle('dark',on);localStorage.setItem('conv_darkMode',on?'1':'0')})()" style="opacity:0;width:0;height:0;position:absolute">
+      <span id="darkTrack" style="position:absolute;inset:0;background:#334155;border-radius:11px;transition:background .2s"></span>
+      <span id="darkThumb" style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,0.4)"></span>
+    </label>
+  </div>
   <div class="side-foot">
     <div class="av" id="userAv">?</div>
     <div><b style="font-size:14px" id="userName">-</b><small id="userDept">캠스 담당자</small></div>
@@ -781,6 +789,20 @@ let curLine=0,curSub=0;
 let scenarios=JSON.parse(localStorage.getItem('conv_scen4')||'[]');
 function G(){return state[curLine][curSub];}
 var _currentUser={name:'',dept:''};
+function _syncDarkToggle(){
+  const on=document.body.classList.contains('dark');
+  const cb=document.getElementById('darkToggle');
+  const track=document.getElementById('darkTrack');
+  const thumb=document.getElementById('darkThumb');
+  if(cb)cb.checked=on;
+  if(track)track.style.background=on?'#2563eb':'#334155';
+  if(thumb)thumb.style.transform=on?'translateX(18px)':'translateX(0)';
+}
+// 저장된 다크모드 복원 (포털 외 단독 접속 시)
+(function(){
+  if(localStorage.getItem('conv_darkMode')==='1')document.body.classList.add('dark');
+  setTimeout(_syncDarkToggle,0);
+})();
 
 /* ─── 뷰 전환 ────────────────────────────────── */
 function showView(v){
@@ -2985,7 +3007,7 @@ buildStabs();render();loadLineData();renderMain();renderScen();calcPitch();rende
 
 window.addEventListener('message', e => {
   if (!e.data) return;
-  if (e.data.type === 'cams_theme') { document.body.classList.toggle('dark', !!e.data.dark); return; }
+  if (e.data.type === 'cams_theme') { document.body.classList.toggle('dark', !!e.data.dark); _syncDarkToggle(); return; }
   if (e.data.type === 'cams_auth') {
     const { name, dept } = e.data;
     _currentUser = { name: name || '', dept: dept || '' };
