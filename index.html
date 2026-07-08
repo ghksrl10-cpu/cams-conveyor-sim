@@ -2429,7 +2429,16 @@ function setDistItem(key,toIdx,val){
 function applyDist(){
   const rows=_distRows();
   rows.forEach(({r,i})=>{
-    if(i===_distSuspended){r.ct=0;r.empty=true;return;}
+    if(i===_distSuspended){
+      r.ct=0;r.empty=true;
+      if(r.ctFormula){
+        DIST_ITEMS.forEach(it=>{
+          const assigned=Object.values(_distAssign[it.key]||{}).reduce((a,b)=>a+b,0);
+          if(assigned>0) r.ctFormula[it.key]=Math.max(0,(+(r.ctFormula[it.key]||0))-assigned);
+        });
+      }
+      return;
+    }
     let extra=0;
     DIST_ITEMS.forEach(it=>{
       const cnt=(_distAssign[it.key]||{})[i]||0;
