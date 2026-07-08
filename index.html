@@ -520,6 +520,7 @@
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="exportSimConfig()">💾 내보내기</button>
         <label class="btn" style="font-size:13px;padding:6px 14px;cursor:pointer">📂 가져오기<input type="file" accept=".json" style="display:none" onchange="importSimConfig(this)"></label>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="gotoSim(2)">📋 공정입력</button>
+        <button class="btn" style="font-size:13px;padding:6px 14px;background:#312e81;border-color:#4f46e5;color:#a5b4fc" onclick="generateReport()">📊 보고서 작성</button>
       </div>
       <script>document.addEventListener('click',()=>{['recoverMenu','scenPickMenu','simScenMenu'].forEach(id=>{const m=document.getElementById(id);if(m)m.style.display='none';});});</script>
     </div>
@@ -549,6 +550,7 @@
           <div style="background:#20232b;padding:10px 14px;font-weight:800;font-size:20px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="document.getElementById('overloadBody').style.display=document.getElementById('overloadBody').style.display==='none'?'block':'none'">
             ⚠️ 과부하 · 납품 영향 분석
             <span id="overloadBadge" style="font-size:16px;margin-left:auto"></span>
+            <button class="btn" style="font-size:12px;padding:5px 12px;background:#312e81;border-color:#4f46e5;color:#a5b4fc;margin-left:8px" onclick="event.stopPropagation();generateReport()">📊 보고서 작성</button>
           </div>
           <div id="overloadBody">
             <div id="overloadContent" style="padding:12px 14px;font-size:20px;line-height:1.7"></div>
@@ -3426,6 +3428,320 @@ window.addEventListener('message', e => {
   const _origSet=localStorage.setItem.bind(localStorage);
   localStorage.setItem=function(k,v){_origSet(k,v);if(k&&k.startsWith('conv_'))odSave();};
 })();
+</script>
+
+<!-- ===== 보고서 작성 (PptxGenJS) ===== -->
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script>
+function generateReport(){
+  if(typeof PptxGenJS==='undefined'){_toast('⚠️ PptxGenJS 로드 중... 잠시 후 다시 시도하세요.');return;}
+
+  const today=new Date();
+  const dateStr=today.getFullYear()+'년 '+(today.getMonth()+1)+'월 '+today.getDate()+'일';
+
+  const base=+document.getElementById('baseProd').value||205;
+  const wm=+document.getElementById('workMin').value||460;
+  const curPn=+document.getElementById('pitchRatio').value||0;
+  const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+  const rows=G().rows;
+  const mainRows=rows.filter(r=>!isSUB(r));
+  const subRows=rows.filter(r=>isSUB(r));
+  const totalCT=rows.reduce((s,r)=>s+(r.ct||0),0);
+  const mainCT=mainRows.reduce((s,r)=>s+(r.ct||0),0);
+  const subCT=subRows.reduce((s,r)=>s+(r.ct||0),0);
+
+  // 현재 설정 UPH
+  const pitchFull=wm*60/base;
+  function calcUPH(pn){
+    if(pn===0)return Math.round(base/wm*60*10)/10;
+    return Math.round(base*pn/(pn+1)/(wm/60)*10)/10;
+  }
+  function calcPitch(pn){
+    if(pn===0)return Math.round(pitchFull*10)/10;
+    return Math.round(pitchFull*(pn+1)/pn*10)/10;
+  }
+  function calcMinWorkers(pn){
+    const p=calcPitch(pn)*1000;
+    return Math.ceil(totalCT/calcPitch(pn));
+  }
+  function calcProd8h(pn){return Math.round(calcUPH(pn)*8);}
+
+  const KIA_UPH=28;
+  const KIA_PROD8=KIA_UPH*8; // 224대
+  const DELIVERY_TIMES=6; // 평균
+  const DELIVERY_PER=6; // 1회 납품 6대
+
+  // 공피치별 데이터 (0=없음, 1:1, 2:1, 3:1, 4:1, 5:1)
+  const pitchRows=[
+    {label:'없음(기준)',pn:0},
+    {label:'1:1',pn:1},
+    {label:'2:1',pn:2},
+    {label:'3:1',pn:3},
+    {label:'4:1',pn:4},
+    {label:'5:1',pn:5},
+  ].map(r=>({
+    ...r,
+    uph:calcUPH(r.pn),
+    pitch:calcPitch(r.pn),
+    prod8:calcProd8h(r.pn),
+    workers:calcMinWorkers(r.pn),
+    gap:calcProd8h(r.pn)-KIA_PROD8,
+  }));
+
+  // 과부하 공정
+  const overloaded=mainRows.filter(r=>{
+    const realCT=r.sync?r.ct:r.ct/(r.workers||1);
+    const pitch=calcPitch(curPn===0?0:curPn);
+    return realCT>pitch*0.85;
+  });
+  const normalProcs=mainRows.filter(r=>r.ct>0&&!overloaded.includes(r));
+
+  // ── PptxGenJS 생성 ──
+  const pres=new PptxGenJS();
+  pres.layout='LAYOUT_16x9';
+  pres.title='컨베어 라인 운영 현황 보고';
+
+  const C_NAVY='1E2761';
+  const C_ICE='CADCFC';
+  const C_WHITE='FFFFFF';
+  const C_RED='DC2626';
+  const C_AMBER='D97706';
+  const C_GREEN='16A34A';
+  const C_GRAY='64748B';
+  const C_DARK='0F172A';
+  const C_CARD='1E293B';
+  const makeShadow=()=>({type:'outer',color:'000000',blur:8,offset:3,angle:45,opacity:0.18});
+
+  // ══ 슬라이드 1: 표지 ══
+  let s1=pres.addSlide();
+  s1.background={color:C_NAVY};
+  s1.addShape(pres.shapes.RECTANGLE,{x:0,y:4.2,w:10,h:1.425,fill:{color:'162050'},line:{color:'162050'}});
+  s1.addText('컨베어 라인 운영 현황 보고',{x:0.6,y:1.2,w:8.8,h:1.2,fontSize:38,bold:true,color:C_WHITE,fontFace:'Calibri'});
+  s1.addText('— 공피치 적용 시 생산량 저하 및 납품 영향 분석 —',{x:0.6,y:2.3,w:8.8,h:0.6,fontSize:16,color:C_ICE,fontFace:'Calibri',italic:true});
+  s1.addShape(pres.shapes.LINE,{x:0.6,y:3.0,w:8.8,h:0,line:{color:C_ICE,width:1,transparency:60}});
+  s1.addText([
+    {text:'보고일: ',options:{bold:true,color:C_ICE}},
+    {text:dateStr,options:{color:C_WHITE}},
+    {text:'    작성: ',options:{bold:true,color:C_ICE}},
+    {text:'생산팀 캠스PM',options:{color:C_WHITE}},
+  ],{x:0.6,y:3.2,w:8.8,h:0.4,fontSize:13,fontFace:'Calibri'});
+  s1.addText('주식회사 캠스',{x:0.6,y:4.5,w:8.8,h:0.5,fontSize:13,color:C_ICE,fontFace:'Calibri'});
+
+  // ══ 슬라이드 2: 핵심 현황 요약 ══
+  let s2=pres.addSlide();
+  s2.background={color:'F8FAFC'};
+  s2.addText('핵심 현황 요약',{x:0.5,y:0.2,w:9,h:0.65,fontSize:28,bold:true,color:C_NAVY,fontFace:'Calibri',margin:0});
+  s2.addText('기아 요구 UPH vs 캠스 실제 UPH 비교',{x:0.5,y:0.82,w:9,h:0.35,fontSize:13,color:C_GRAY,fontFace:'Calibri',margin:0});
+
+  // 3개 stat 카드
+  const cards=[
+    {title:'기아 요구 UPH',val:'28',unit:'대/시간',sub:'공피치 무관 고정',color:C_NAVY,tx:'CADCFC'},
+    {title:'캠스 현재 UPH',val:String(calcUPH(curPn===0?3:curPn)),unit:'대/시간',sub:'공피치 '+(curPn===0?'3':curPn)+':1 기준',color:C_RED,tx:C_WHITE},
+    {title:'8시간 납품 부족',val:String(Math.max(0,KIA_PROD8-calcProd8h(curPn===0?3:curPn))),unit:'대/조',sub:'기아 '+(KIA_PROD8)+'대 vs 캠스 '+calcProd8h(curPn===0?3:curPn)+'대',color:'92400E',tx:'FDE68A'},
+  ];
+  cards.forEach((c,i)=>{
+    const x=0.4+i*3.1;
+    s2.addShape(pres.shapes.ROUNDED_RECTANGLE,{x,y:1.3,w:2.8,h:1.6,fill:{color:c.color},rectRadius:0.12,shadow:makeShadow()});
+    s2.addText(c.title,{x,y:1.35,w:2.8,h:0.35,fontSize:11,color:c.tx,bold:true,align:'center',fontFace:'Calibri',margin:0});
+    s2.addText(c.val,{x,y:1.65,w:2.8,h:0.7,fontSize:40,color:C_WHITE,bold:true,align:'center',fontFace:'Calibri',margin:0});
+    s2.addText(c.unit,{x,y:2.32,w:2.8,h:0.25,fontSize:11,color:c.tx,align:'center',fontFace:'Calibri',margin:0});
+    s2.addText(c.sub,{x,y:2.6,w:2.8,h:0.25,fontSize:9,color:c.tx,align:'center',fontFace:'Calibri',italic:true,margin:0});
+  });
+
+  // 납품 정보 박스
+  s2.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:0.4,y:3.1,w:9.2,h:1.1,fill:{color:'FEF3C7'},line:{color:'D97706',width:1},rectRadius:0.08});
+  s2.addText('📦  납품 기준',{x:0.6,y:3.18,w:2,h:0.3,fontSize:12,bold:true,color:'92400E',fontFace:'Calibri',margin:0});
+  s2.addText([
+    {text:'1조(8시간) 납품 횟수: ',options:{bold:true,color:'78350F'}},
+    {text:'5~7회  ',options:{color:'92400E',bold:true,fontSize:15}},
+    {text:'|  1회 납품: ',options:{bold:true,color:'78350F'}},
+    {text:'C/PAD 6대 + 범퍼 6대',options:{color:'92400E',bold:true,fontSize:15}},
+    {text:'  |  1조 총 납품 가능: ',options:{bold:true,color:'78350F'}},
+    {text:String(DELIVERY_TIMES*DELIVERY_PER)+'대 (평균 6회 기준)',options:{color:'92400E',bold:true,fontSize:15}},
+  ],{x:0.6,y:3.5,w:8.8,h:0.5,fontSize:12,fontFace:'Calibri',margin:0});
+
+  // 핵심 문제 텍스트
+  s2.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:0.4,y:4.3,w:9.2,h:0.95,fill:{color:'FEE2E2'},line:{color:C_RED,width:1},rectRadius:0.08});
+  s2.addText('⚠  핵심 문제',{x:0.6,y:4.38,w:2,h:0.28,fontSize:12,bold:true,color:C_RED,fontFace:'Calibri',margin:0});
+  s2.addText('기아는 공피치 여부와 관계없이 28 UPH(고정)로 라인이 가동됩니다. 반면 캠스 라인은 공피치 적용 시 생산속도가 저하되어 납품 일정을 맞출 수 없습니다.',
+    {x:0.6,y:4.65,w:8.8,h:0.5,fontSize:11,color:'7F1D1D',fontFace:'Calibri',margin:0});
+
+  // ══ 슬라이드 3: 공피치별 생산량 & 필요 인원 ══
+  let s3=pres.addSlide();
+  s3.background={color:'F8FAFC'};
+  s3.addText('공피치별 생산량 및 필요 인원',{x:0.5,y:0.2,w:9,h:0.65,fontSize:28,bold:true,color:C_NAVY,fontFace:'Calibri',margin:0});
+  s3.addText('기아 요구 28 UPH 기준 — 공피치 설정별 캠스 대응 현황',{x:0.5,y:0.82,w:9,h:0.35,fontSize:13,color:C_GRAY,fontFace:'Calibri',margin:0});
+
+  const tHeader=[
+    [{text:'공피치',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'피치(초)',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'UPH',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'8시간 생산(대)',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'기아 대비(대)',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'최소 필요인원',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'비고',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+    ]
+  ];
+  const tRows=pitchRows.map(r=>{
+    const isOk=r.uph>=KIA_UPH;
+    const gapColor=isOk?C_GREEN:C_RED;
+    const rowFill=isOk?{color:'F0FDF4'}:{color:'FEF2F2'};
+    return [
+      {text:r.label,options:{align:'center',fill:rowFill,color:C_DARK}},
+      {text:String(r.pitch),options:{align:'center',fill:rowFill,color:C_DARK}},
+      {text:String(r.uph),options:{align:'center',fill:rowFill,bold:true,color:isOk?C_GREEN:C_RED}},
+      {text:String(r.prod8),options:{align:'center',fill:rowFill,color:C_DARK}},
+      {text:(r.gap>=0?'+':'')+r.gap,options:{align:'center',fill:rowFill,bold:true,color:gapColor}},
+      {text:r.workers+'명',options:{align:'center',fill:rowFill,bold:true,color:C_NAVY}},
+      {text:isOk?'✔ 정상':'✘ 납품 부족',options:{align:'center',fill:rowFill,color:gapColor,bold:true}},
+    ];
+  });
+
+  s3.addTable([...tHeader,...tRows],{
+    x:0.4,y:1.2,w:9.2,h:3.6,
+    colW:[1.2,1.2,1.0,1.6,1.4,1.5,1.3],
+    border:{pt:0.5,color:'CBD5E1'},
+    fontSize:12,fontFace:'Calibri',
+    rowH:0.48,
+  });
+
+  s3.addText('※ 최소 필요인원: 총 C/T '+totalCT.toFixed(1)+'초 기준 자동 계산  |  초록: 기아 요구 충족  /  빨강: 납품 부족',
+    {x:0.4,y:4.9,w:9.2,h:0.3,fontSize:9,color:C_GRAY,fontFace:'Calibri',italic:true,margin:0});
+
+  // ══ 슬라이드 4: 공정별 과부하 현황 ══
+  let s4=pres.addSlide();
+  s4.background={color:'F8FAFC'};
+  s4.addText('공정별 과부하 현황',{x:0.5,y:0.2,w:9,h:0.65,fontSize:28,bold:true,color:C_NAVY,fontFace:'Calibri',margin:0});
+  s4.addText('현재 시나리오 기준 — 과부하/정상 공정 분포',{x:0.5,y:0.82,w:9,h:0.35,fontSize:13,color:C_GRAY,fontFace:'Calibri',margin:0});
+
+  // 과부하 공정 카드
+  const curPitch=calcPitch(curPn===0?3:curPn);
+  const overRows=mainRows.map(r=>{
+    if(!r.ct||r.ct<=0)return null;
+    const realCT=r.sync?r.ct:r.ct/(r.workers||1);
+    const load=Math.round(realCT/curPitch*100);
+    return {name:r.name||'공정',ct:r.ct,realCT,workers:r.workers||1,load,over:load>100,warn:load>85&&load<=100};
+  }).filter(Boolean).sort((a,b)=>b.load-a.load);
+
+  const oRows=[
+    [{text:'공정명',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'C/T(초)',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'인원',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'실C/T(초)',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'부하율(%)',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'상태',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+    ],
+    ...overRows.slice(0,10).map(r=>{
+      const fill=r.over?{color:'FEE2E2'}:r.warn?{color:'FEF9C3'}:{color:'F0FDF4'};
+      const sc=r.over?C_RED:r.warn?C_AMBER:C_GREEN;
+      const st=r.over?'⚠ 과부하':r.warn?'△ 주의':'✔ 정상';
+      return [
+        {text:r.name,options:{fill,color:C_DARK,bold:r.over}},
+        {text:String(r.ct),options:{fill,color:C_DARK,align:'center'}},
+        {text:r.workers+'명',options:{fill,color:C_DARK,align:'center'}},
+        {text:String(r.realCT.toFixed(1)),options:{fill,color:C_DARK,align:'center'}},
+        {text:String(r.load)+'%',options:{fill,bold:true,color:sc,align:'center'}},
+        {text:st,options:{fill,bold:true,color:sc,align:'center'}},
+      ];
+    })
+  ];
+  s4.addTable(oRows,{x:0.4,y:1.2,w:9.2,colW:[2.2,1.3,1.0,1.4,1.5,1.8],
+    border:{pt:0.5,color:'CBD5E1'},fontSize:12,fontFace:'Calibri',rowH:0.43});
+  s4.addText('※ 공피치 '+(curPn===0?'3':curPn)+':1 기준 피치 '+curPitch.toFixed(1)+'초 적용',
+    {x:0.4,y:5.1,w:9.2,h:0.3,fontSize:9,color:C_GRAY,fontFace:'Calibri',italic:true,margin:0});
+
+  // ══ 슬라이드 5: 납품 영향 분석 ══
+  let s5=pres.addSlide();
+  s5.background={color:C_DARK};
+  s5.addText('납품 영향 분석',{x:0.5,y:0.2,w:9,h:0.65,fontSize:28,bold:true,color:C_WHITE,fontFace:'Calibri',margin:0});
+  s5.addText('공피치 3:1 적용 시 기아 납품 지연 시뮬레이션',{x:0.5,y:0.82,w:9,h:0.35,fontSize:13,color:C_ICE,fontFace:'Calibri',margin:0});
+
+  const uph3=calcUPH(3);
+  const prod3=calcProd8h(3);
+  const shortage=KIA_PROD8-prod3;
+  const delivShortage=Math.ceil(shortage/DELIVERY_PER);
+
+  const impactItems=[
+    {icon:'🏭',title:'기아 라인 요구',desc:'28 UPH × 8시간 = '+KIA_PROD8+'대/조 (공피치 무관 고정)',color:'1E3A5F'},
+    {icon:'📉',title:'캠스 실제 생산 (3:1)',desc:uph3+' UPH × 8시간 = '+prod3+'대/조 → '+shortage+'대 부족',color:'7F1D1D'},
+    {icon:'🚚',title:'납품 부족 환산',desc:'회당 6대 기준 → '+delivShortage+'회분 부족 (1조 납품 5~7회 중 약 '+delivShortage+'회 미납)',color:'78350F'},
+    {icon:'⏰',title:'추가 생산 필요 시간',desc:'부족분 '+shortage+'대 ÷ '+uph3+' UPH = 약 '+Math.ceil(shortage/uph3*60)+'분 추가 가동 필요',color:'1E293B'},
+  ];
+
+  impactItems.forEach((item,i)=>{
+    const y=1.3+i*1.0;
+    s5.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:0.4,y,w:9.2,h:0.82,fill:{color:item.color},rectRadius:0.08,shadow:makeShadow()});
+    s5.addText(item.icon+' '+item.title,{x:0.6,y:y+0.05,w:9,h:0.3,fontSize:13,bold:true,color:C_WHITE,fontFace:'Calibri',margin:0});
+    s5.addText(item.desc,{x:0.6,y:y+0.38,w:9,h:0.35,fontSize:12,color:C_ICE,fontFace:'Calibri',margin:0});
+  });
+
+  // ══ 슬라이드 6: 개선 방향 (인원 추가 투입) ══
+  let s6=pres.addSlide();
+  s6.background={color:'F8FAFC'};
+  s6.addText('개선 방향 — 공피치별 인원 추가 투입',{x:0.5,y:0.2,w:9,h:0.65,fontSize:26,bold:true,color:C_NAVY,fontFace:'Calibri',margin:0});
+  s6.addText('기아 28 UPH 충족을 위한 공피치별 최소 필요 인원 및 추가 투입 인원',{x:0.5,y:0.82,w:9,h:0.35,fontSize:12,color:C_GRAY,fontFace:'Calibri',margin:0});
+
+  // 기준 인원 (공피치 없을 때)
+  const baseWorkers=calcMinWorkers(0);
+
+  const improveRows=[
+    [{text:'공피치',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'피치(초)',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'UPH',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'필요 인원',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'기준 대비\n추가 인원',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'8시간 생산',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+     {text:'기아 납품\n충족 여부',options:{bold:true,color:C_WHITE,fill:{color:C_NAVY},align:'center'}},
+    ],
+    ...pitchRows.map(r=>{
+      const add=r.workers-baseWorkers;
+      const isOk=r.uph>=KIA_UPH;
+      const rowFill=isOk?{color:'F0FDF4'}:add>0?{color:'EFF6FF'}:{color:'FEF2F2'};
+      const sc=isOk?C_GREEN:C_RED;
+      return [
+        {text:r.label,options:{align:'center',fill:rowFill,color:C_DARK,bold:r.label==='3:1'}},
+        {text:String(r.pitch),options:{align:'center',fill:rowFill,color:C_DARK}},
+        {text:String(r.uph),options:{align:'center',fill:rowFill,bold:true,color:isOk?C_GREEN:C_RED}},
+        {text:r.workers+'명',options:{align:'center',fill:rowFill,bold:true,color:C_NAVY}},
+        {text:add>0?'+'+add+'명':add===0?'-':add+'명',options:{align:'center',fill:rowFill,bold:add>0,color:add>0?C_AMBER:C_GRAY}},
+        {text:r.prod8+'대',options:{align:'center',fill:rowFill,color:C_DARK}},
+        {text:isOk?'✔ 충족':'✘ 부족',options:{align:'center',fill:rowFill,bold:true,color:sc}},
+      ];
+    })
+  ];
+
+  s6.addTable(improveRows,{x:0.4,y:1.25,w:9.2,colW:[1.2,1.1,1.0,1.3,1.5,1.4,1.7],
+    border:{pt:0.5,color:'CBD5E1'},fontSize:12,fontFace:'Calibri',rowH:0.48});
+
+  s6.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:0.4,y:4.8,w:9.2,h:0.55,fill:{color:'EFF6FF'},line:{color:'3B82F6',width:1},rectRadius:0.07});
+  s6.addText('※ 기준 인원: 공피치 없음 기준 '+baseWorkers+'명  |  공피치 적용 시 라인 속도 저하로 인원 추가 투입 필요  |  3:1 기준 '+calcMinWorkers(3)+'명 투입 시 '+calcUPH(3)+' UPH 달성',
+    {x:0.6,y:4.87,w:9,h:0.38,fontSize:9,color:'1E40AF',fontFace:'Calibri',margin:0});
+
+  // ══ 슬라이드 7: 결론 ══
+  let s7=pres.addSlide();
+  s7.background={color:C_NAVY};
+  s7.addText('결론 및 조치 요청',{x:0.5,y:0.3,w:9,h:0.65,fontSize:30,bold:true,color:C_WHITE,fontFace:'Calibri',margin:0});
+
+  const conclusions=[
+    {num:'01',title:'공피치 적용 시 즉각 UPH 저하',desc:'기아는 공피치 여부와 무관하게 28 UPH 가동 → 캠스는 3:1 기준 '+uph3+' UPH로 떨어져 매 조 '+shortage+'대 부족 발생'},
+    {num:'02',title:'납품 지연 직접 영향',desc:'1회 납품 6대, 1조 5~7회 납품 기준 → 부족분 발생 시 납품 횟수 미충족, 기아 라인 정지 리스크'},
+    {num:'03',title:'인원 추가 투입 필요',desc:'공피치 3:1 적용 시 최소 '+calcMinWorkers(3)+'명 투입 필요 (기준 '+baseWorkers+'명 대비 +'+(calcMinWorkers(3)-baseWorkers)+'명)'},
+    {num:'04',title:'공수 분배 최적화 병행',desc:'과부하 공정 공수 재배분으로 병목 해소 → 동일 인원으로 UPH 향상 가능'},
+  ];
+
+  conclusions.forEach((c,i)=>{
+    const y=1.1+i*1.05;
+    s7.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:0.4,y,w:9.2,h:0.88,fill:{color:'162050'},rectRadius:0.1,shadow:makeShadow()});
+    s7.addShape(pres.shapes.OVAL,{x:0.55,y:y+0.19,w:0.45,h:0.45,fill:{color:'3B82F6'},line:{color:'3B82F6'}});
+    s7.addText(c.num,{x:0.55,y:y+0.19,w:0.45,h:0.45,fontSize:11,bold:true,color:C_WHITE,align:'center',valign:'middle',fontFace:'Calibri',margin:0});
+    s7.addText(c.title,{x:1.1,y:y+0.08,w:8.2,h:0.3,fontSize:13,bold:true,color:C_WHITE,fontFace:'Calibri',margin:0});
+    s7.addText(c.desc,{x:1.1,y:y+0.42,w:8.2,h:0.35,fontSize:11,color:C_ICE,fontFace:'Calibri',margin:0});
+  });
+
+  // 저장
+  const fname='컨베어_운영현황_보고_'+today.getFullYear()+('0'+(today.getMonth()+1)).slice(-2)+('0'+today.getDate()).slice(-2)+'.pptx';
+  pres.writeFile({fileName:fname}).then(()=>_toast('✅ 보고서 저장 완료: '+fname)).catch(e=>_toast('⚠️ 저장 오류: '+e.message));
+}
 </script>
 </body>
 </html>
