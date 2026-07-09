@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -520,7 +520,9 @@
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="exportSimConfig()">💾 내보내기</button>
         <label class="btn" style="font-size:13px;padding:6px 14px;cursor:pointer">📂 가져오기<input type="file" accept=".json" style="display:none" onchange="importSimConfig(this)"></label>
         <button class="btn" style="font-size:13px;padding:6px 14px" onclick="gotoSim(2)">📋 공정입력</button>
-        <button class="btn" style="font-size:13px;padding:6px 14px;background:#312e81;border-color:#4f46e5;color:#a5b4fc" onclick="generateReport()">📊 보고서 작성</button>
+        <button class="btn" style="font-size:13px;padding:6px 14px;background:#1e3a5f;border-color:#2563eb;color:#93c5fd" onclick="generateReportV1()">📋 원본형 보고서</button>
+        <button class="btn" style="font-size:13px;padding:6px 14px;background:#312e81;border-color:#4f46e5;color:#a5b4fc" onclick="generateReportV2()">📊 데이터형 보고서</button>
+        <button class="btn" style="font-size:13px;padding:6px 14px;background:#1a3a2a;border-color:#16a34a;color:#86efac" onclick="showRedistModal()">🔄 재배분 시나리오</button>
       </div>
       <script>document.addEventListener('click',()=>{['recoverMenu','scenPickMenu','simScenMenu'].forEach(id=>{const m=document.getElementById(id);if(m)m.style.display='none';});});</script>
     </div>
@@ -544,13 +546,25 @@
         </span>
       </div>
 
+      <!-- ── 재배분 시나리오 모달 ── -->
+      <div id="redistModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100000;overflow-y:auto">
+        <div style="max-width:820px;margin:40px auto;background:#1a1d24;border:1px solid #2a2d35;border-radius:14px;padding:20px 24px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <span style="font-size:18px;font-weight:800;color:#86efac">🔄 공정 재배분 시나리오 분석</span>
+            <button class="btn" onclick="document.getElementById('redistModal').style.display='none'" style="font-size:13px;padding:4px 12px">✕ 닫기</button>
+          </div>
+          <div id="redistModalContent" style="font-size:13px;line-height:1.8;color:#cbd5e1"></div>
+        </div>
+      </div>
+
       <!-- ── 과부하 분석 패널 ── -->
       <div id="overloadPanel" style="margin-top:12px;display:none">
         <div style="background:#1a1d24;border:1px solid #2a2d35;border-radius:12px;overflow:hidden">
           <div style="background:#20232b;padding:10px 14px;font-weight:800;font-size:20px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="document.getElementById('overloadBody').style.display=document.getElementById('overloadBody').style.display==='none'?'block':'none'">
             ⚠️ 과부하 · 납품 영향 분석
             <span id="overloadBadge" style="font-size:16px;margin-left:auto"></span>
-            <button class="btn" style="font-size:12px;padding:5px 12px;background:#312e81;border-color:#4f46e5;color:#a5b4fc;margin-left:8px" onclick="event.stopPropagation();generateReport()">📊 보고서 작성</button>
+            <button class="btn" style="font-size:12px;padding:5px 12px;background:#1e3a5f;border-color:#2563eb;color:#93c5fd;margin-left:8px" onclick="event.stopPropagation();generateReportV1()">📋 원본형</button>
+            <button class="btn" style="font-size:12px;padding:5px 12px;background:#312e81;border-color:#4f46e5;color:#a5b4fc;margin-left:4px" onclick="event.stopPropagation();generateReportV2()">📊 데이터형</button>
           </div>
           <div id="overloadBody">
             <div id="overloadContent" style="padding:12px 14px;font-size:20px;line-height:1.7"></div>
@@ -3505,11 +3519,117 @@ function _pptFillTable(doc,id,headers,rows){
   }
 }
 
-async function generateReport(){
-  const today=new Date();
-  const dateStr=today.getFullYear()+'. '+(today.getMonth()+1)+'. '+today.getDate()+'.';
-  const dateTag=String(today.getFullYear())+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
+// ── 공통 데이터 계산 ────────────────────────────────
+// ── 재배분 시나리오 분석 (ctFormula 기반 CT 재계산) ──────────────────────
+function _calcRedistAnalysis(rows, base, wm){
+  const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+  const mainRows=rows.filter(r=>!isSUB(r));
 
+  // 공정 번호로 행 찾기
+  const findByNum=num=>mainRows.find(r=>{
+    const n=r.name||'';
+    return n.match(new RegExp('(^|[^\\d])'+num+'(공정|\\s|$|[^\\d])'));
+  });
+
+  const r8=findByNum(8), r11=findByNum(11), r13=findByNum(13), r16=findByNum(16);
+  if(!r8||!r11||!r16) return null;
+
+  // ctFormula에서 합산 가능한 항목만 추출 (extra 객체 생성)
+  const formulaExtra=f=>{
+    if(!f||f._type!=='line3') return null;
+    const keys=['ctcMove3','ctcUnpack3','ctcDanpum','ctcHarness','ctcHook3','ctcBarcode3',
+      'ctcDong','ctcAirbag','ctcTorque3','ctcNut','ctcScrew','ctcShex','ctcBhex',
+      'ctcWireSensor3','ctcWireClip3','ctcTestItem3','ctcPadCnt3','ctcPadLen3',
+      'ctcBrktCnt3','ctcBrktHW3','ctcMldgCnt3','ctcMldgHW3'];
+    const ex={};
+    keys.forEach(k=>{const v=+(f[k]||0);if(v>0)ex[k]=v;});
+    return ex;
+  };
+
+  // CT 재계산: 8공정 ← 11공정 공수 흡수
+  let new8CT, new16CT, hasFormula=false;
+  const f8=r8.ctFormula, f11=r11.ctFormula;
+  if(f8&&f8._type==='line3'&&f11&&f11._type==='line3'){
+    hasFormula=true;
+    const ex11=formulaExtra(f11);
+    new8CT=_calcCTfromFormula(f8, ex11||{});
+    new8CT+=+(f11.ctcBase3||0); // ctcBase3는 _calcCTfromFormula에서 extra 미처리 → 별도 가산
+    new8CT=Math.round(new8CT*10)/10;
+  } else {
+    new8CT=Math.round(((r8.ct||0)+(r11.ct||0))*10)/10;
+  }
+
+  // CT 재계산: 16공정 ← 13공정 공수 흡수
+  const f16=r16.ctFormula;
+  if(r13){
+    const f13=r13.ctFormula;
+    if(f16&&f16._type==='line3'&&f13&&f13._type==='line3'){
+      hasFormula=true;
+      const ex13=formulaExtra(f13);
+      new16CT=_calcCTfromFormula(f16, ex13||{});
+      new16CT+=+(f13.ctcBase3||0);
+      new16CT=Math.round(new16CT*10)/10;
+    } else {
+      new16CT=Math.round(((r16.ct||0)+(r13.ct||0))*10)/10;
+    }
+  } else {
+    new16CT=r16.ct||0;
+  }
+
+  // 인원 재배분: 제거 공정의 작업자를 수신 공정에 추가
+  const new8Workers=(r8.workers||1)+(r11.workers||1);
+  const new16Workers=(r16.workers||1)+(r13?r13.workers||1:0);
+
+  // 수정된 행 목록 (11공정·13공정 제거, 8공정·16공정 CT/인원 업데이트)
+  const modRows=mainRows
+    .filter(r=>r!==r11&&r!==r13)
+    .map(r=>{
+      if(r===r8) return {...r, ct:new8CT, workers:new8Workers};
+      if(r===r16) return {...r, ct:new16CT, workers:new16Workers};
+      return r;
+    });
+
+  const pitchFull=wm*60/base;
+  const KIA_PROD8=224;
+
+  const results=[0,1,2,3,4,5].map(pn=>{
+    const pitch=pn===0?pitchFull:pitchFull*(pn+1)/pn;
+    const uphRaw=pn===0?base/(wm/60):base*pn/(pn+1)/(wm/60);
+    const uph=Math.round(uphRaw*10)/10;
+    const prod8=Math.round(uphRaw*8);
+
+    const loads=modRows.map(r=>{
+      if(!r.ct||r.ct<=0) return null;
+      const sp=r.taskSpan||1;
+      const realCT=(sp>1)||r.sync?r.ct:r.ct/(r.workers||1);
+      const effPitch=pitch*sp;
+      const load=Math.round(realCT/effPitch*100);
+      return {name:r.name||'',ct:r.ct,realCT,sp,load,effPitch,workers:r.workers||1};
+    }).filter(Boolean);
+
+    const overloaded=loads.filter(p=>p.load>100).sort((a,b)=>b.load-a.load);
+    const bottleneck=overloaded.length>0?overloaded[0]:null;
+    const shortage=KIA_PROD8-prod8;
+    const feasible=overloaded.length===0&&shortage<=0;
+
+    return {
+      pn, label:pn===0?'공피치 없음':pn+':1',
+      pitch:Math.round(pitch*10)/10, uph, prod8,
+      overloaded, bottleneck, shortage, feasible
+    };
+  });
+
+  return {
+    r8name:r8.name, r11name:r11.name,
+    r13name:r13?r13.name:'없음', r16name:r16.name,
+    orig8CT:r8.ct||0, orig16CT:r16.ct||0,
+    orig11CT:r11.ct||0, orig13CT:r13?r13.ct:0,
+    new8CT, new16CT, new8Workers, new16Workers, hasFormula,
+    results
+  };
+}
+
+function _rptCalcData(){
   const base=+document.getElementById('baseProd').value||205;
   const wm=+document.getElementById('workMin').value||460;
   const curPn=+document.getElementById('pitchRatio').value||0;
@@ -3517,160 +3637,394 @@ async function generateReport(){
   const rows=G().rows;
   const mainRows=rows.filter(r=>!isSUB(r));
   const totalCT=rows.reduce((s,r)=>s+(r.ct||0),0);
-
   const pitchFull=wm*60/base;
-  function calcUPH(pn){
-    if(pn===0)return Math.round(base/wm*60*10)/10;
-    return Math.round(base*pn/(pn+1)/(wm/60)*10)/10;
-  }
-  function calcPitch(pn){
-    if(pn===0)return Math.round(pitchFull*10)/10;
-    return Math.round(pitchFull*(pn+1)/pn*10)/10;
-  }
-  function calcMinWorkers(pn){return Math.ceil(totalCT/calcPitch(pn));}
-  function calcProd8h(pn){return Math.round(calcUPH(pn)*8);}
-
-  const KIA_UPH=28;
-  const KIA_PROD8=KIA_UPH*8;
-
-  const pitchRows=[
-    {label:'공피치 없음',pn:0},
-    {label:'1:1',pn:1},
-    {label:'2:1',pn:2},
-    {label:'3:1',pn:3},
-    {label:'4:1',pn:4},
-    {label:'5:1',pn:5},
-  ].map(r=>({...r,
-    uph:calcUPH(r.pn),
-    pitch:calcPitch(r.pn),
-    prod8:calcProd8h(r.pn),
-    workers:calcMinWorkers(r.pn),
-    gap:calcProd8h(r.pn)-KIA_PROD8,
+  const calcUPH=pn=>pn===0?Math.round(base/wm*60*10)/10:Math.round(base*pn/(pn+1)/(wm/60)*10)/10;
+  const calcPitch=pn=>pn===0?Math.round(pitchFull*10)/10:Math.round(pitchFull*(pn+1)/pn*10)/10;
+  const calcW=pn=>Math.ceil(totalCT/calcPitch(pn));
+  const calcP8=pn=>Math.round(calcUPH(pn)*8);
+  const KIA_UPH=28, KIA_PROD8=224;
+  const pitchRows=[0,1,2,3,4,5].map(pn=>({
+    pn,label:pn===0?'공피치 없음':pn+':1',
+    uph:calcUPH(pn),pitch:calcPitch(pn),prod8:calcP8(pn),
+    workers:calcW(pn),gap:calcP8(pn)-KIA_PROD8
   }));
-
-  const baseWorkers=calcMinWorkers(0);
-  const uph3=calcUPH(3);
-  const prod3=calcProd8h(3);
-  const shortage=KIA_PROD8-prod3;
-  const curPitch=calcPitch(curPn===0?3:curPn);
-
+  const baseWorkers=calcW(0);
+  // 현재 선택 공피치 기준 수치 (0=미선택 시 3:1 기본값)
+  const curEffPn=curPn===0?3:curPn;
+  const curPitch=calcPitch(curEffPn);
+  const curUPH=calcUPH(curEffPn), curProd8=calcP8(curEffPn);
+  const curShortage=KIA_PROD8-curProd8;
+  const curAddMin=curShortage>0?Math.ceil(curShortage/curUPH*60):0;
+  const curShortRnd=curShortage>0?Math.ceil(curShortage/6):0;
+  // 3:1 기준 수치 (하위 호환)
+  const uph3=calcUPH(3),prod3=calcP8(3),shortage=KIA_PROD8-prod3;
   const overRows=mainRows.map(r=>{
     if(!r.ct||r.ct<=0)return null;
-    const realCT=r.sync?r.ct:r.ct/(r.workers||1);
-    const load=Math.round(realCT/curPitch*100);
-    return {name:r.name||'공정',ct:r.ct,realCT,workers:r.workers||1,load,over:load>100,warn:load>85&&load<=100};
+    const sp=r.taskSpan||1;
+    const realCT=(sp>1)||r.sync?r.ct:r.ct/(r.workers||1);
+    const effPitch=curPitch*sp;
+    const load=Math.round(realCT/effPitch*100);
+    const excess=Math.round(realCT-effPitch);
+    return {name:r.name||'공정',ct:r.ct,realCT,workers:r.workers||1,load,excess,sp,effPitch};
   }).filter(Boolean).sort((a,b)=>b.load-a.load);
-
-  const addMin=Math.ceil(shortage/uph3*60);
-  const shortRnd=shortage>0?Math.ceil(shortage/6):0;
-
-  // ── JSZip으로 템플릿 직접 수정 ──────────────────
-  _toast('보고서 생성 중...');
-  let ab;
-  try{
-    const resp=await fetch('./template.pptx');
-    if(!resp.ok)throw new Error('template.pptx 로드 실패 ('+resp.status+')');
-    ab=await resp.arrayBuffer();
-  }catch(e){ _toast('템플릿 로드 실패: '+e.message); return; }
-
-  const zip=await JSZip.loadAsync(ab);
-  const parser=new DOMParser();
-  const ser=new XMLSerializer();
-
-  async function modSlide(n,fn){
-    const key=`ppt/slides/slide${n}.xml`;
-    const txt=await zip.file(key).async('string');
-    const doc=parser.parseFromString(txt,'application/xml');
-    fn(doc);
-    zip.file(key,ser.serializeToString(doc));
+  // 병목 분석: load>100인 공정 중 실질 UPH를 가장 낮게 만드는 공정
+  const overloadedProcs=overRows.filter(r=>r.load>100);
+  // 각 과부하 공정의 병목 기준 UPH = 3600 / (realCT/sp)
+  const bottleneck=overloadedProcs.length>0
+    ?overloadedProcs.reduce((worst,r)=>{
+        const bn=3600/(r.realCT/r.sp);
+        const bw=3600/(worst.realCT/worst.sp);
+        return bn<bw?r:worst;
+      })
+    :null;
+  const effectiveUPH=bottleneck
+    ?Math.round(3600/(bottleneck.realCT/bottleneck.sp)*10)/10
+    :curUPH;
+  const effectiveProd8=Math.round(effectiveUPH*8);
+  const effectiveShortage=Math.max(0,KIA_PROD8-effectiveProd8);
+  const today=new Date();
+  const dateStr=today.getFullYear()+'. '+(today.getMonth()+1)+'. '+today.getDate()+'.';
+  const dateTag=String(today.getFullYear())+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
+  // 재배분 분석: 현재 행 우선, 없으면 저장 시나리오 탐색
+  let redistAnalysis=_calcRedistAnalysis(rows,base,wm);
+  if(!redistAnalysis){
+    const _isSUBr=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+    const _hasPNs=(rs,ns)=>ns.every(n=>rs.filter(r=>!_isSUBr(r)).some(r=>(r.name||'').match(new RegExp('(^|[^\\d])'+n+'(공정|\\s|$|[^\\d])'))));
+    const _saved=JSON.parse(localStorage.getItem('conv_scen4')||'[]');
+    const _cand=_saved.find(s=>(s.rows||[]).length>0&&_hasPNs(s.rows||[],[8,11,16]));
+    if(_cand) redistAnalysis=_calcRedistAnalysis(_cand.rows,_cand.base||base,_cand.wm||wm);
   }
+  return {base,wm,curPn,curEffPn,pitchRows,baseWorkers,curPitch,
+    curUPH,curProd8,curShortage,curAddMin,curShortRnd,
+    uph3,prod3,shortage,overRows,KIA_UPH,KIA_PROD8,
+    bottleneck,overloadedProcs,effectiveUPH,effectiveProd8,effectiveShortage,
+    addMin:Math.ceil(shortage/uph3*60),shortRnd:shortage>0?Math.ceil(shortage/6):0,
+    redistAnalysis,dateStr,dateTag};
+}
 
-  const gapStr=g=>g<0?`▼${Math.abs(g)}대`:g>0?`▲${g}대`:'동일';
+async function _rptLoadZip(toast){
+  if(toast)_toast('보고서 생성 중...');
+  const resp=await fetch('./template.pptx');
+  if(!resp.ok)throw new Error('template.pptx 로드 실패 ('+resp.status+')');
+  const ab=await resp.arrayBuffer();
+  return JSZip.loadAsync(ab);
+}
 
-  // 슬라이드1: 표지
-  await modSlide(1,doc=>{
-    _pptSetLines(doc,1104,['컨베어 라인 운영 현황','보고서']);
-    _pptSetText(doc,1105,'컨베어 라인 공피치 적용 영향 분석');
-    _pptSetText(doc,1106,'PU LINE C/PAD');
-    _pptSetText(doc,1107,`공피치별 UPH·생산량·필요 인원 분석  |  보고일: ${dateStr}`);
-    _pptSetLines(doc,1108,['1) 공피치 적용 현황 요약','2) 공피치별 UPH 및 생산량','3) 결론 및 건의사항']);
-  });
-
-  // 슬라이드2: 01 현황 요약 타이틀
-  await modSlide(2,doc=>{
-    _pptSetText(doc,11,'공피치 적용 현황 요약');
-  });
-
-  // 슬라이드3: 02 공피치별 UPH 생산량 (표)
-  await modSlide(3,doc=>{
-    _pptSetText(doc,20,'공피치별 UPH 및 8시간 생산량 현황');
-    _pptFillTable(doc,2,
-      ['구분','UPH','8시간 생산','기아 대비'],
-      pitchRows.map(r=>[r.label,String(r.uph),r.prod8+'대',gapStr(r.gap)])
-    );
-  });
-
-  // 슬라이드4: 03 공정별 공수 부하 (표)
-  await modSlide(4,doc=>{
-    _pptSetText(doc,20,'공정별 공수 부하 현황 (현 공피치 기준)');
-    _pptFillTable(doc,4,
-      ['공정명','CT (초)','부하율','비고'],
-      overRows.slice(0,9).map(r=>[r.name,(+r.ct||0).toFixed(1),r.load+'%',r.load>100?'과부하':''])
-    );
-  });
-
-  // 슬라이드5: 04 공피치별 필요 인원 (표)
-  await modSlide(5,doc=>{
-    _pptSetText(doc,20,'공피치별 필요 인원 현황');
-    _pptFillTable(doc,4,
-      ['구분','필요 인원','기준 대비','8시간 생산'],
-      pitchRows.map(r=>[r.label,r.workers+'명',
-        r.workers>baseWorkers?`+${r.workers-baseWorkers}명`:'기준',
-        r.prod8+'대'])
-    );
-  });
-
-  // 슬라이드6: 05 납품 영향 (텍스트)
-  await modSlide(6,doc=>{
-    _pptSetText(doc,20,'납품 일정 영향 분석');
-    _pptSetLines(doc,6,[
-      `■ 1조당 납품 부족: ${shortage}대`,
-      `  - 납품 미충족분: 약 ${shortRnd}회분  (1회당 6대 기준)`,
-      `  - 추가 가동 필요: 약 ${addMin}분`,
-      '',
-      '■ 납품 구성 (1조 기준)',
-      '  - 납품 횟수: 5~7회  /  회당 납품: C/PAD 6대 + 범퍼 6대',
-      '',
-      `■ 결론: 공피치 3:1 유지 시 매 조 ${shortage}대 부족 → 납품 일정 미충족 반복`,
-    ]);
-  });
-
-  // 슬라이드7: 06 결론 및 건의사항 (텍스트)
-  await modSlide(7,doc=>{
-    _pptSetText(doc,20,'결론 및 건의사항');
-    _pptSetLines(doc,6,[
-      '① 공피치 적용 즉각 UPH 저하',
-      `   기아 ${KIA_UPH} UPH 고정  vs  캠스 3:1 기준 ${uph3} UPH → 매 조 ${shortage}대 부족`,
-      '',
-      '② 납품 일정 위협',
-      `   1조당 ${shortage}대 미달 → 납품 ${shortRnd}회분 충족 불가 (1회당 6대 기준)`,
-      '',
-      '③ 개선 필요 사항',
-      '   - 공피치 해소 또는 인원 추가 투입 방안 검토 필요',
-      '   - 공피치 1:1 운영 시 정상 UPH 회복 가능',
-      '',
-      `보고일: ${dateStr}  |  생산팀`,
-    ]);
-  });
-
-  // 다운로드
+async function _rptDownload(zip,dateTag,suffix){
   const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download=`컨베어_운영현황_보고_${dateTag}.pptx`; a.click();
+  a.href=url; a.download=`컨베어_운영현황_보고_${dateTag}${suffix}.pptx`; a.click();
   URL.revokeObjectURL(url);
-  _toast('보고서 다운로드 완료!');
 }
+
+// ── V1: 원본형 (템플릿 그대로 + 날짜/제목만 업데이트) ─────
+async function generateReportV1(){
+  try{
+    const d=_rptCalcData();
+    const zip=await _rptLoadZip(true);
+    const parser=new DOMParser(), ser=new XMLSerializer();
+    async function mod(n,fn){
+      const k=`ppt/slides/slide${n}.xml`;
+      const doc=parser.parseFromString(await zip.file(k).async('string'),'application/xml');
+      fn(doc); zip.file(k,ser.serializeToString(doc));
+    }
+    // 표지만 날짜/보고일 업데이트
+    await mod(1,doc=>{
+      _pptSetText(doc,1107,`공피치 관련 공정 공수 변경 및 인원 대체 운영 계획  |  보고일: ${d.dateStr}`);
+    });
+    // 슬라이드 2~7: 원본 내용 그대로 유지 (수정 없음)
+    await _rptDownload(zip,d.dateTag,'_원본형');
+    _toast('원본형 보고서 다운로드 완료!');
+  }catch(e){_toast('오류: '+e.message);}
+}
+
+// ── V2: 데이터형 (시뮬레이션 수치로 채움) ─────────────────
+async function generateReportV2(){
+  try{
+    const d=_rptCalcData();
+    const zip=await _rptLoadZip(true);
+    const parser=new DOMParser(), ser=new XMLSerializer();
+    const gapStr=g=>g<0?`▼${Math.abs(g)}대`:g>0?`▲${g}대`:'동일';
+    const curLabel=d.curEffPn===0?'공피치 없음':d.curEffPn+':1';
+    const markCur=r=>r.pn===d.curEffPn?'★ '+r.label:r.label;
+    async function mod(n,fn){
+      const k=`ppt/slides/slide${n}.xml`;
+      const doc=parser.parseFromString(await zip.file(k).async('string'),'application/xml');
+      fn(doc); zip.file(k,ser.serializeToString(doc));
+    }
+    // 슬라이드1: 표지
+    await mod(1,doc=>{
+      _pptSetLines(doc,1104,['컨베어 라인 운영 현황','보고서']);
+      _pptSetText(doc,1105,'컨베어 라인 공피치 적용 영향 분석');
+      _pptSetText(doc,1106,'PU LINE C/PAD');
+      _pptSetText(doc,1107,`공피치별 UPH·생산량·필요 인원 분석  |  보고일: ${d.dateStr}`);
+      _pptSetLines(doc,1108,['1) 공피치별 생산성 현황','2) 공정 부하 및 납품 영향','3) 결론 및 건의사항']);
+    });
+    // 슬라이드2: 현황 요약 섹션 타이틀
+    await mod(2,doc=>{ _pptSetText(doc,11,'공피치 적용 현황 요약'); });
+    // 슬라이드3: 공피치별 UPH/생산량 (★ 현재 기준 표시)
+    await mod(3,doc=>{
+      _pptSetText(doc,20,'공피치별 UPH 및 8시간 생산량 현황');
+      _pptFillTable(doc,2,
+        ['구분','UPH','8시간 생산','기아 대비'],
+        d.pitchRows.map(r=>[markCur(r),String(r.uph),r.prod8+'대',gapStr(r.gap)])
+      );
+    });
+    // 슬라이드4: 공정별 공수 부하 현황 (CT·피치초과분 포함)
+    await mod(4,doc=>{
+      _pptSetText(doc,20,`공정별 공수 부하 현황 (${curLabel} 기준 · 피치 ${Math.round(d.curPitch)}초)`);
+      _pptFillTable(doc,4,
+        ['공정명','CT(초)','부하율','피치 대비'],
+        d.overRows.slice(0,9).map(r=>[
+          r.name, r.ct.toFixed(1), r.load+'%',
+          r.excess>0?`+${r.excess}초 초과`:r.load>85?'주의':'-'
+        ])
+      );
+    });
+    // 슬라이드5: 공피치별 필요 인원 (공피치 초 포함, ★ 표시)
+    await mod(5,doc=>{
+      _pptSetText(doc,20,'공피치별 필요 인원 현황');
+      _pptFillTable(doc,4,
+        ['구분','공피치(초)','필요 인원','기준 대비'],
+        d.pitchRows.map(r=>[
+          markCur(r),
+          Math.round(r.pitch)+'초',
+          r.workers+'명',
+          r.workers>d.baseWorkers?`+${r.workers-d.baseWorkers}명`:'기준'
+        ])
+      );
+    });
+    // 슬라이드6: 납품 일정 영향 (공피치 손실 + 병목 손실 분리)
+    await mod(6,doc=>{
+      _pptSetText(doc,20,'납품 일정 영향 분석');
+      const lines=[
+        `■ 기아 목표: ${d.KIA_UPH} UPH / 8시간 ${d.KIA_PROD8}대`,
+        `■ 공피치(${curLabel}) 적용 손실: ${d.curUPH} UPH → 8시간 ${d.curProd8}대 (부족 ${d.curShortage}대)`,
+      ];
+      if(d.bottleneck&&d.bottleneck.load>100){
+        lines.push(`■ 병목 추가 손실: ${d.bottleneck.name} CT ${d.bottleneck.ct.toFixed(1)}초 > 피치 ${Math.round(d.curPitch)}초`);
+        lines.push(`  → 병목 기준 실현 UPH: ${d.effectiveUPH} / 8시간 ${d.effectiveProd8}대 (부족 ${d.effectiveShortage}대)`);
+      }
+      lines.push('');
+      lines.push(`■ 추가 가동 필요: 약 ${d.curAddMin}분  (1조당 ${d.curShortRnd}회 납품분 미달)`);
+      lines.push('');
+      lines.push('■ 납품 구성 (1조 기준): 5~7회 / 회당 C/PAD 6대 + 범퍼 6대');
+      lines.push('');
+      if(d.bottleneck&&d.bottleneck.load>100){
+        lines.push(`■ 결론: 공피치 + 병목(${d.bottleneck.name}) 복합 요인 → 목표 대비 ${d.effectiveShortage}대 부족`);
+      } else {
+        lines.push(d.curShortage>0
+          ?`■ 결론: ${curLabel} 유지 시 매 조 ${d.curShortage}대 부족 → 납품 일정 미충족 반복`
+          :`■ 결론: 공피치 해소 시 기아 목표 충족 가능 (${d.pitchRows[0]?.prod8}대)`);
+      }
+      _pptSetLines(doc,6,lines);
+    });
+    // 슬라이드7: 결론 및 건의사항 (병목 포함 구체 수치)
+    await mod(7,doc=>{
+      _pptSetText(doc,20,'결론 및 건의사항');
+      const curWorkers=d.pitchRows.find(r=>r.pn===d.curEffPn)?.workers||'-';
+      const lines=[
+        '① 공피치 적용 → 즉각 UPH 저하',
+        `   기아 ${d.KIA_UPH} UPH  vs  캠스(${curLabel}) ${d.curUPH} UPH → 매 조 ${d.curShortage}대 부족`,
+        '',
+      ];
+      if(d.bottleneck&&d.bottleneck.load>100){
+        lines.push('② 공수 증가 → 병목 과부하 발생');
+        lines.push(`   ${d.bottleneck.name}  CT ${d.bottleneck.ct.toFixed(1)}초 / 피치 ${Math.round(d.curPitch)}초 → ${d.bottleneck.load}% 과부하`);
+        lines.push(`   병목 기준 실현 UPH ${d.effectiveUPH} → 8시간 ${d.effectiveShortage}대 추가 손실`);
+        lines.push('');
+        lines.push('③ 납품 일정 위협 (복합)');
+        lines.push(`   공피치 손실 ${d.curShortage}대 + 병목 손실 → 총 ${d.effectiveShortage}대 미달`);
+        lines.push(`   납품 ${Math.ceil(d.effectiveShortage/6)}회분 충족 불가 (회당 6대 기준)`);
+        lines.push('');
+        lines.push('④ 개선 필요 사항');
+        lines.push(`   - 병목 공정(${d.bottleneck.name}) CT ${d.bottleneck.ct.toFixed(1)}초 → ${Math.round(d.curPitch)}초 이하로 개선 필요`);
+        lines.push(`   - 공피치 해소: 기준 ${d.baseWorkers}명 → 현재 ${curWorkers}명`);
+        lines.push(`   - 1:1 적용 시: ${d.pitchRows[1]?.uph} UPH / ${d.pitchRows[1]?.prod8}대 가능`);
+      } else {
+        lines.push('② 납품 일정 위협');
+        lines.push(`   1조당 ${d.curShortage}대 미달 → 납품 ${d.curShortRnd}회분 충족 불가 (회당 6대 기준)`);
+        lines.push('');
+        lines.push('③ 개선 필요 사항');
+        lines.push(`   - 공피치 해소: 기준 ${d.baseWorkers}명 → 현재 ${curWorkers}명 운영 중`);
+        lines.push(`   - 1:1 적용 시: ${d.pitchRows[1]?.uph} UPH / ${d.pitchRows[1]?.prod8}대 생산 가능`);
+      }
+      lines.push('');
+      lines.push(`보고일: ${d.dateStr}  |  생산팀`);
+      _pptSetLines(doc,6,lines);
+    });
+    // 슬라이드8: 재배분 시나리오 분석 (11공정+13공정 → 8공정+16공정)
+    if(d.redistAnalysis){
+      const ra=d.redistAnalysis;
+      await _pptAddSlide8(zip);
+      await mod(8,doc=>{
+        _pptSetText(doc,20,`공정 재배분 시나리오: ${ra.r11name}·${ra.r13name} 제거 후 가능 여부`);
+        const lines=[
+          `■ 조건: ${ra.r11name}(${ra.orig11CT}초) + ${ra.r13name}(${ra.orig13CT}초) 제거`,
+          `  → ${ra.r8name}: ${ra.orig8CT}초 + ${ra.orig11CT}초 = ${ra.new8CT}초 (${ra.new8Workers}명) ${ra.hasFormula?'[공수식 계산]':'[단순합산]'}`,
+          `  → ${ra.r16name}: ${ra.orig16CT}초 + ${ra.orig13CT}초 = ${ra.new16CT}초 (${ra.new16Workers}명) ${ra.hasFormula?'[공수식 계산]':'[단순합산]'}`,
+          '',
+          ...ra.results.map(r=>{
+            const gap=r.shortage<=0?`▲${Math.abs(r.shortage)}대 여유`:`▼${r.shortage}대 부족`;
+            if(r.feasible){
+              return `  ✓ ${r.label}: 피치 ${r.pitch}초 / UPH ${r.uph} / ${r.prod8}대 → ${gap} [가능]`;
+            } else {
+              const bn=r.bottleneck;
+              const reason=bn?`${bn.name} ${bn.load}%`:'UPH 부족';
+              return `  ✗ ${r.label}: 피치 ${r.pitch}초 → ${reason} / ${gap} [불가]`;
+            }
+          }),
+          '',
+          `■ ${ra.hasFormula?'ctFormula 기반 정밀 계산 (스크류/하네스/브라켓 등 개별 공수 합산)':'CT 단순 합산 (ctFormula 미설정 — 공수 재입력 권장)'}`,
+          `보고일: ${d.dateStr}  |  생산팀`
+        ];
+        _pptSetLines(doc,6,lines);
+      });
+    }
+    await _rptDownload(zip,d.dateTag,'_데이터형');
+    _toast('데이터형 보고서 다운로드 완료!');
+  }catch(e){_toast('오류: '+e.message);}
+}
+
+// ── 재배분 시나리오 모달 표시 ──────────────────────────────
+function showRedistModal(){
+  const base=+document.getElementById('baseProd').value||205;
+  const wm=+document.getElementById('workMin').value||460;
+
+  // 1) 현재 활성 행에서 먼저 시도
+  let ra=_calcRedistAnalysis(G().rows,base,wm);
+  let sourceLabel='현재 활성 시나리오';
+
+  // 2) 현재 행이 비어있으면 저장된 시나리오 중 8·11·16공정이 있는 것 탐색
+  if(!ra){
+    const saved=JSON.parse(localStorage.getItem('conv_scen4')||'[]');
+    const isSUB=r=>r.group==='SUB'||(r.name||'').toUpperCase().startsWith('SUB')||(r.name||'').includes('서브');
+    const hasProcNums=(rows,nums)=>nums.every(n=>
+      rows.filter(r=>!isSUB(r)).some(r=>(r.name||'').match(new RegExp('(^|[^\\d])'+n+'(공정|\\s|$|[^\\d])')))
+    );
+    const candidate=saved.find(s=>(s.rows||[]).length>0&&hasProcNums(s.rows||[],[8,11,16]));
+    if(candidate){
+      ra=_calcRedistAnalysis(candidate.rows,
+        candidate.base||base, candidate.wm||wm);
+      sourceLabel='저장 시나리오: '+candidate.name;
+    }
+  }
+
+  const el=document.getElementById('redistModalContent');
+  if(!ra){
+    el.innerHTML='<div style="color:#f87171">분석 불가: 8공정/11공정/16공정 데이터를 찾을 수 없습니다.<br>해당 공정이 저장된 시나리오에 포함되어 있는지 확인하세요.</div>';
+    document.getElementById('redistModal').style.display='block';
+    return;
+  }
+
+  const formulaNote=ra.hasFormula
+    ?'<span style="color:#86efac">✓ ctFormula 기반 정밀 계산 적용</span>'
+    :'<span style="color:#fbbf24">⚠ ctFormula 미설정 — 단순 CT 합산 (오차 있음)</span>';
+
+  let html=`
+    <div style="background:#0f1a0f;border:1px solid #166534;border-radius:8px;padding:12px 16px;margin-bottom:14px">
+      <div style="color:#64748b;font-size:11px;margin-bottom:6px">📂 데이터 출처: ${sourceLabel}</div>
+      <b style="color:#4ade80">조건:</b> 11공정 + 13공정 제거 →
+        <b>${ra.r8name}</b>(${ra.orig8CT}초) + <b>${ra.r11name}</b>(${ra.orig11CT}초) 합산 /
+        <b>${ra.r16name}</b>(${ra.orig16CT}초) + <b>${ra.r13name}</b>(${ra.orig13CT}초) 합산<br>
+      <b style="color:#4ade80">재계산 CT:</b>
+        ${ra.r8name} <span style="color:#93c5fd">${ra.new8CT}초</span> (${ra.new8Workers}명) /
+        ${ra.r16name} <span style="color:#93c5fd">${ra.new16CT}초</span> (${ra.new16Workers}명) &nbsp;${formulaNote}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="background:#1e293b;color:#94a3b8;font-weight:700">
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #334155">구분</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:1px solid #334155">피치(초)</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:1px solid #334155">UPH</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:1px solid #334155">8시간 생산</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:1px solid #334155">기아 대비</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #334155">병목 / 과부하</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:1px solid #334155">가능?</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  ra.results.forEach(r=>{
+    const okBg=r.feasible?'#0f2a0f':'#2a0f0f';
+    const okColor=r.feasible?'#4ade80':'#f87171';
+    const gapStr=r.shortage<=0?`▲${Math.abs(r.shortage)}대`:`▼${r.shortage}대`;
+    const gapColor=r.shortage<=0?'#4ade80':'#f87171';
+    const bnInfo=r.overloaded.length>0
+      ?r.overloaded.slice(0,2).map(p=>`<span style="color:#fca5a5">${p.name} ${p.load}%</span>`).join(', ')
+      :'<span style="color:#4ade80">과부하 없음</span>';
+    html+=`<tr style="background:${okBg};border-bottom:1px solid #1e293b">
+      <td style="padding:6px 10px;font-weight:700;color:#e2e8f0">${r.label}</td>
+      <td style="padding:6px 10px;text-align:center">${r.pitch}초</td>
+      <td style="padding:6px 10px;text-align:center">${r.uph}</td>
+      <td style="padding:6px 10px;text-align:center">${r.prod8}대</td>
+      <td style="padding:6px 10px;text-align:center;color:${gapColor};font-weight:700">${gapStr}</td>
+      <td style="padding:6px 10px">${bnInfo}</td>
+      <td style="padding:6px 10px;text-align:center;font-weight:800;font-size:16px;color:${okColor}">${r.feasible?'✓':'✗'}</td>
+    </tr>`;
+  });
+
+  html+=`</tbody></table>`;
+
+  // 불가 이유 상세 (첫 번째 불가 케이스)
+  const firstFail=ra.results.find(r=>!r.feasible);
+  if(firstFail&&firstFail.overloaded.length>0){
+    html+=`<div style="margin-top:12px;background:#1a0a0a;border:1px solid #7f1d1d;border-radius:8px;padding:12px 16px">
+      <b style="color:#fca5a5">불가 사유 (예: ${firstFail.label}):</b><br>`;
+    firstFail.overloaded.forEach(p=>{
+      const uphBn=Math.round(3600/(p.realCT/p.sp)*10)/10;
+      const prod8Bn=Math.round(uphBn*8);
+      html+=`&bull; <b>${p.name}</b>: realCT ${p.realCT.toFixed(1)}초 vs 피치 ${p.effPitch.toFixed(1)}초 → <b style="color:#ef4444">${p.load}% 과부하</b>
+        (병목 UPH ${uphBn} → 8시간 ${prod8Bn}대, 기아 목표 대비 ${224-prod8Bn}대 부족)<br>`;
+    });
+    html+=`</div>`;
+  }
+
+  el.innerHTML=html;
+  document.getElementById('redistModal').style.display='block';
+}
+
+// ── PPTX 슬라이드 8 추가 (slide7 복사 후 신규 구조 등록) ──
+async function _pptAddSlide8(zip){
+  zip.file('ppt/slides/slide8.xml', await zip.file('ppt/slides/slide7.xml').async('string'));
+  const relSrc=zip.file('ppt/slides/_rels/slide7.xml.rels');
+  if(relSrc) zip.file('ppt/slides/_rels/slide8.xml.rels', await relSrc.async('string'));
+
+  // Content_Types.xml
+  let ct=await zip.file('[Content_Types].xml').async('string');
+  if(!ct.includes('slide8.xml')){
+    ct=ct.replace(
+      /(<Override[^>]*slide7\.xml[^>]*\/>)/,
+      '$1<Override PartName="/ppt/slides/slide8.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>'
+    );
+    zip.file('[Content_Types].xml',ct);
+  }
+
+  // presentation.xml.rels
+  let pr=await zip.file('ppt/_rels/presentation.xml.rels').async('string');
+  const m7=pr.match(/Id="(rId(\d+))"[^>]+Target="slides\/slide7\.xml"/);
+  const newRid=m7?'rId'+(parseInt(m7[2])+50):'rId108';
+  if(!pr.includes('slide8.xml')){
+    const slideType='http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide';
+    pr=pr.replace('</Relationships>',
+      `<Relationship Id="${newRid}" Type="${slideType}" Target="slides/slide8.xml"/></Relationships>`);
+    zip.file('ppt/_rels/presentation.xml.rels',pr);
+  }
+
+  // presentation.xml: sldId 추가
+  let pxml=await zip.file('ppt/presentation.xml').async('string');
+  if(!pxml.includes(newRid)){
+    const allIds=[...pxml.matchAll(/\bid="(\d+)"\s+r:id=/g)].map(m=>parseInt(m[1]));
+    const maxId=allIds.length?Math.max(...allIds):262;
+    pxml=pxml.replace('</p:sldIdLst>',
+      `<p:sldId id="${maxId+1}" r:id="${newRid}"/></p:sldIdLst>`);
+    zip.file('ppt/presentation.xml',pxml);
+  }
+  return newRid;
+}
+
+async function generateReport(){ await generateReportV2(); }
 </script>
 </body>
 </html>
