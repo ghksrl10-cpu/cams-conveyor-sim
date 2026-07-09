@@ -3440,9 +3440,72 @@ window.addEventListener('message', e => {
 </script>
 
 <!-- ===== 보고서 작성 ===== -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
-function generateReport(){
+// ── JSZip PPTX 헬퍼 ──────────────────────────────────
+function _pptFindShape(doc, id){
+  const all=doc.getElementsByTagName('*');
+  for(const el of all){
+    if(el.localName==='cNvPr'&&String(el.getAttribute('id'))===String(id)){
+      let p=el.parentElement;
+      while(p&&p.localName!=='sp'&&p.localName!=='graphicFrame'&&p.localName!=='pic') p=p.parentElement;
+      return p||null;
+    }
+  }
+  return null;
+}
+function _pptDesc(el,name){const all=el.getElementsByTagName('*');for(const c of all)if(c.localName===name)return c;return null;}
+function _pptParaText(para,text){
+  const rs=[...para.childNodes].filter(n=>n.localName==='r');
+  rs.slice(1).forEach(r=>para.removeChild(r));
+  if(rs[0]){const t=_pptDesc(rs[0],'t');if(t)t.textContent=text;}
+}
+function _pptSetText(doc,id,text){
+  const sp=_pptFindShape(doc,id);if(!sp)return;
+  const tb=_pptDesc(sp,'txBody');if(!tb)return;
+  const ps=[...tb.childNodes].filter(n=>n.localName==='p');
+  ps.slice(1).forEach(p=>tb.removeChild(p));
+  _pptParaText(ps[0],text);
+}
+function _pptSetLines(doc,id,lines){
+  if(!lines||!lines.length)return;
+  const sp=_pptFindShape(doc,id);if(!sp)return;
+  const tb=_pptDesc(sp,'txBody');if(!tb)return;
+  const ps=[...tb.childNodes].filter(n=>n.localName==='p');
+  ps.slice(1).forEach(p=>tb.removeChild(p));
+  _pptParaText(ps[0],lines[0]);
+  for(let i=1;i<lines.length;i++){
+    const np=ps[0].cloneNode(true);
+    _pptParaText(np,lines[i]);
+    tb.appendChild(np);
+  }
+}
+function _pptCellText(cell,text){
+  const tb=_pptDesc(cell,'txBody');if(!tb)return;
+  const p=[...tb.childNodes].find(n=>n.localName==='p');if(!p)return;
+  const r=[...p.childNodes].find(n=>n.localName==='r');
+  if(r){const t=_pptDesc(r,'t');if(t)t.textContent=text;}
+}
+function _pptFillTable(doc,id,headers,rows){
+  const frame=_pptFindShape(doc,id);if(!frame)return;
+  const tbl=_pptDesc(frame,'tbl');if(!tbl)return;
+  const trs=[...tbl.childNodes].filter(n=>n.localName==='tr');
+  if(trs[0]){
+    const cells=[...trs[0].childNodes].filter(n=>n.localName==='tc');
+    headers.forEach((h,j)=>{if(cells[j])_pptCellText(cells[j],h);});
+  }
+  rows.forEach((row,i)=>{
+    if(!trs[i+1])return;
+    const cells=[...trs[i+1].childNodes].filter(n=>n.localName==='tc');
+    row.forEach((v,j)=>{if(cells[j])_pptCellText(cells[j],String(v));});
+  });
+  for(let i=rows.length+1;i<trs.length;i++){
+    const cells=[...trs[i].childNodes].filter(n=>n.localName==='tc');
+    cells.forEach(c=>_pptCellText(c,''));
+  }
+}
 
+async function generateReport(){
   const today=new Date();
   const dateStr=today.getFullYear()+'. '+(today.getMonth()+1)+'. '+today.getDate()+'.';
   const dateTag=String(today.getFullYear())+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
@@ -3498,188 +3561,115 @@ function generateReport(){
     return {name:r.name||'공정',ct:r.ct,realCT,workers:r.workers||1,load,over:load>100,warn:load>85&&load<=100};
   }).filter(Boolean).sort((a,b)=>b.load-a.load);
 
-  // Python 데이터 직렬화
-  const pRowsPy='[\n'+pitchRows.map(r=>
-    `    {'label':'${r.label}','uph':${r.uph},'prod8':${r.prod8},'workers':${r.workers},'gap':${r.gap}}`
-  ).join(',\n')+'\n]';
-
   const addMin=Math.ceil(shortage/uph3*60);
   const shortRnd=shortage>0?Math.ceil(shortage/6):0;
-  const overRowsJson=JSON.stringify(overRows.slice(0,9).map(r=>({name:r.name,ct:+(+(r.ct||0)).toFixed(1),load:r.load})));
 
-  const pyScript=String.raw`# -*- coding: utf-8 -*-
-"""컨베어 라인 운영 현황 보고서 생성기
-실행: python generate_report.py
-필요: pip install python-pptx
-"""
-import sys, json, copy
-sys.stdout.reconfigure(encoding='utf-8')
-from pptx import Presentation
-from pptx.util import Pt
-from pptx.oxml.ns import qn
-from lxml import etree
+  // ── JSZip으로 템플릿 직접 수정 ──────────────────
+  _toast('보고서 생성 중...');
+  let ab;
+  try{
+    const resp=await fetch('./template.pptx');
+    if(!resp.ok)throw new Error('template.pptx 로드 실패 ('+resp.status+')');
+    ab=await resp.arrayBuffer();
+  }catch(e){ _toast('템플릿 로드 실패: '+e.message); return; }
 
-# ── 보고 데이터 ─────────────────────────────
-DATE_STR  = '${dateStr}'
-KIA_UPH   = 28
-KIA_PROD8 = ${KIA_PROD8}
-BASE_W    = ${baseWorkers}
-UPH3      = ${uph3}
-PROD3     = ${prod3}
-SHORTAGE  = ${shortage}
-ADD_MIN   = ${addMin}
-SHORT_RND = ${shortRnd}
+  const zip=await JSZip.loadAsync(ab);
+  const parser=new DOMParser();
+  const ser=new XMLSerializer();
 
-PITCH_ROWS = ${pRowsPy}
-OVER_ROWS  = json.loads("""${overRowsJson}""")
+  async function modSlide(n,fn){
+    const key=`ppt/slides/slide${n}.xml`;
+    const txt=await zip.file(key).async('string');
+    const doc=parser.parseFromString(txt,'application/xml');
+    fn(doc);
+    zip.file(key,ser.serializeToString(doc));
+  }
 
-TEMPLATE = r'C:\Users\admin\OneDrive - 주식회사 캠스\Microsoft Teams 채팅 파일\PU 공수 변경 및 공피치 최종 전.pptx'
-OUTPUT   = '컨베어_운영현황_보고_${dateTag}.pptx'
+  const gapStr=g=>g<0?`▼${Math.abs(g)}대`:g>0?`▲${g}대`:'동일';
 
-# ── 헬퍼 ────────────────────────────────────
-def find_shape(slide, shape_id):
-    for s in slide.shapes:
-        if s.shape_id == shape_id: return s
-    return None
+  // 슬라이드1: 표지
+  await modSlide(1,doc=>{
+    _pptSetLines(doc,1104,['컨베어 라인 운영 현황','보고서']);
+    _pptSetText(doc,1105,'컨베어 라인 공피치 적용 영향 분석');
+    _pptSetText(doc,1106,'PU LINE C/PAD');
+    _pptSetText(doc,1107,`공피치별 UPH·생산량·필요 인원 분석  |  보고일: ${dateStr}`);
+    _pptSetLines(doc,1108,['1) 공피치 적용 현황 요약','2) 공피치별 UPH 및 생산량','3) 결론 및 건의사항']);
+  });
 
-def set_text(shape, text):
-    if shape is None or not shape.has_text_frame: return
-    tf = shape.text_frame
-    for para in tf.paragraphs:
-        for run in para.runs: run.text = ''
-    while len(tf.paragraphs) > 1:
-        tf._txBody.remove(tf.paragraphs[-1]._p)
-    p = tf.paragraphs[0]
-    if p.runs: p.runs[0].text = text
-    else: p.add_run().text = text
+  // 슬라이드2: 01 현황 요약 타이틀
+  await modSlide(2,doc=>{
+    _pptSetText(doc,11,'공피치 적용 현황 요약');
+  });
 
-def set_lines(shape, lines):
-    if shape is None or not shape.has_text_frame: return
-    tf = shape.text_frame
-    for para in tf.paragraphs:
-        for run in para.runs: run.text = ''
-    while len(tf.paragraphs) > 1:
-        tf._txBody.remove(tf.paragraphs[-1]._p)
-    p0 = tf.paragraphs[0]
-    if not lines: return
-    if p0.runs: p0.runs[0].text = lines[0]
-    else: p0.add_run().text = lines[0]
-    for line in lines[1:]:
-        new_p = copy.deepcopy(p0._p)
-        for r in new_p.findall(qn('a:r')): new_p.remove(r)
-        r_e = etree.SubElement(new_p, qn('a:r'))
-        t_e = etree.SubElement(r_e, qn('a:t'))
-        t_e.text = line
-        tf._txBody.append(new_p)
+  // 슬라이드3: 02 공피치별 UPH 생산량 (표)
+  await modSlide(3,doc=>{
+    _pptSetText(doc,20,'공피치별 UPH 및 8시간 생산량 현황');
+    _pptFillTable(doc,2,
+      ['구분','UPH','8시간 생산','기아 대비'],
+      pitchRows.map(r=>[r.label,String(r.uph),r.prod8+'대',gapStr(r.gap)])
+    );
+  });
 
-def upd_cell(cell, text):
-    tf = cell.text_frame
-    for para in tf.paragraphs:
-        for run in para.runs: run.text = ''
-    while len(tf.paragraphs) > 1:
-        tf._txBody.remove(tf.paragraphs[-1]._p)
-    p = tf.paragraphs[0]
-    if p.runs: p.runs[0].text = text
-    else: p.add_run().text = text
+  // 슬라이드4: 03 공정별 공수 부하 (표)
+  await modSlide(4,doc=>{
+    _pptSetText(doc,20,'공정별 공수 부하 현황 (현 공피치 기준)');
+    _pptFillTable(doc,4,
+      ['공정명','CT (초)','부하율','비고'],
+      overRows.slice(0,9).map(r=>[r.name,(+r.ct||0).toFixed(1),r.load+'%',r.load>100?'과부하':''])
+    );
+  });
 
-def fill_table(tbl, headers, rows):
-    for j, h in enumerate(headers):
-        if j < len(tbl.columns): upd_cell(tbl.cell(0, j), h)
-    for i, row in enumerate(rows):
-        if i + 1 >= len(tbl.rows): break
-        for j, val in enumerate(row):
-            if j < len(tbl.columns): upd_cell(tbl.cell(i+1, j), str(val))
-    for i in range(len(rows)+1, len(tbl.rows)):
-        for j in range(len(tbl.columns)):
-            upd_cell(tbl.cell(i, j), '')
+  // 슬라이드5: 04 공피치별 필요 인원 (표)
+  await modSlide(5,doc=>{
+    _pptSetText(doc,20,'공피치별 필요 인원 현황');
+    _pptFillTable(doc,4,
+      ['구분','필요 인원','기준 대비','8시간 생산'],
+      pitchRows.map(r=>[r.label,r.workers+'명',
+        r.workers>baseWorkers?`+${r.workers-baseWorkers}명`:'기준',
+        r.prod8+'대'])
+    );
+  });
 
-# ── 메인 ────────────────────────────────────
-prs = Presentation(TEMPLATE)
+  // 슬라이드6: 05 납품 영향 (텍스트)
+  await modSlide(6,doc=>{
+    _pptSetText(doc,20,'납품 일정 영향 분석');
+    _pptSetLines(doc,6,[
+      `■ 1조당 납품 부족: ${shortage}대`,
+      `  - 납품 미충족분: 약 ${shortRnd}회분  (1회당 6대 기준)`,
+      `  - 추가 가동 필요: 약 ${addMin}분`,
+      '',
+      '■ 납품 구성 (1조 기준)',
+      '  - 납품 횟수: 5~7회  /  회당 납품: C/PAD 6대 + 범퍼 6대',
+      '',
+      `■ 결론: 공피치 3:1 유지 시 매 조 ${shortage}대 부족 → 납품 일정 미충족 반복`,
+    ]);
+  });
 
-# 슬라이드 1: 표지
-s = prs.slides[0]
-set_lines(find_shape(s, 1104), ['컨베어 라인 운영 현황', '보고서'])
-set_text(find_shape(s, 1105), '컨베어 라인 공피치 적용 영향 분석')
-set_text(find_shape(s, 1106), 'PU LINE C/PAD')
-set_text(find_shape(s, 1107), f'공피치별 UPH·생산량·필요 인원 분석  |  보고일: {DATE_STR}')
-set_lines(find_shape(s, 1108), ['1) 공피치 적용 현황 요약', '2) 공피치별 UPH 및 생산량', '3) 결론 및 건의사항'])
+  // 슬라이드7: 06 결론 및 건의사항 (텍스트)
+  await modSlide(7,doc=>{
+    _pptSetText(doc,20,'결론 및 건의사항');
+    _pptSetLines(doc,6,[
+      '① 공피치 적용 즉각 UPH 저하',
+      `   기아 ${KIA_UPH} UPH 고정  vs  캠스 3:1 기준 ${uph3} UPH → 매 조 ${shortage}대 부족`,
+      '',
+      '② 납품 일정 위협',
+      `   1조당 ${shortage}대 미달 → 납품 ${shortRnd}회분 충족 불가 (1회당 6대 기준)`,
+      '',
+      '③ 개선 필요 사항',
+      '   - 공피치 해소 또는 인원 추가 투입 방안 검토 필요',
+      '   - 공피치 1:1 운영 시 정상 UPH 회복 가능',
+      '',
+      `보고일: ${dateStr}  |  생산팀`,
+    ]);
+  });
 
-# 슬라이드 2: 01 공피치 적용 현황 요약 (섹션 타이틀)
-s = prs.slides[1]
-set_text(find_shape(s, 11), '공피치 적용 현황 요약')
-
-# 슬라이드 3: 02 공피치별 UPH 및 생산량 (표)
-s = prs.slides[2]
-set_text(find_shape(s, 20), '공피치별 UPH 및 8시간 생산량 현황')
-def gap_str(g): return f'▼{abs(g)}대' if g < 0 else (f'▲{g}대' if g > 0 else '동일')
-sh = find_shape(s, 2)
-if sh: fill_table(sh.table,
-    ['구분', 'UPH', '8시간 생산', '기아 대비'],
-    [(r['label'], str(r['uph']), f"{r['prod8']}대", gap_str(r['gap'])) for r in PITCH_ROWS]
-)
-
-# 슬라이드 4: 03 공정별 공수 부하 현황 (표)
-s = prs.slides[3]
-set_text(find_shape(s, 20), '공정별 공수 부하 현황 (현 공피치 기준)')
-sh = find_shape(s, 4)
-if sh and OVER_ROWS: fill_table(sh.table,
-    ['공정명', 'CT (초)', '부하율', '비고'],
-    [(r['name'], f"{r['ct']:.1f}", f"{r['load']}%", '과부하' if r['load'] > 100 else '') for r in OVER_ROWS[:9]]
-)
-
-# 슬라이드 5: 04 공피치별 필요 인원 (표)
-s = prs.slides[4]
-set_text(find_shape(s, 20), '공피치별 필요 인원 현황')
-sh = find_shape(s, 4)
-if sh: fill_table(sh.table,
-    ['구분', '필요 인원', '기준 대비', '8시간 생산'],
-    [(r['label'], f"{r['workers']}명",
-      f"+{r['workers']-BASE_W}명" if r['workers'] > BASE_W else '기준',
-      f"{r['prod8']}대") for r in PITCH_ROWS]
-)
-
-# 슬라이드 6: 05 납품 일정 영향 분석 (텍스트)
-s = prs.slides[5]
-set_text(find_shape(s, 20), '납품 일정 영향 분석')
-set_lines(find_shape(s, 6), [
-    f'■ 1조당 납품 부족: {SHORTAGE}대',
-    f'  - 납품 미충족분: 약 {SHORT_RND}회분  (1회당 6대 기준)',
-    f'  - 추가 가동 필요: 약 {ADD_MIN}분',
-    '',
-    '■ 납품 구성 (1조 기준)',
-    '  - 납품 횟수: 5~7회  /  회당 납품: C/PAD 6대 + 범퍼 6대',
-    '',
-    f'■ 결론: 공피치 3:1 유지 시 매 조 {SHORTAGE}대 부족 → 납품 일정 미충족 반복',
-])
-
-# 슬라이드 7: 06 결론 및 건의사항 (텍스트)
-s = prs.slides[6]
-set_text(find_shape(s, 20), '결론 및 건의사항')
-set_lines(find_shape(s, 6), [
-    '① 공피치 적용 즉각 UPH 저하',
-    f'   기아 {KIA_UPH} UPH 고정  vs  캠스 3:1 기준 {UPH3} UPH → 매 조 {SHORTAGE}대 부족',
-    '',
-    '② 납품 일정 위협',
-    f'   1조당 {SHORTAGE}대 미달 → 납품 {SHORT_RND}회분 충족 불가 (1회당 6대 기준)',
-    '',
-    '③ 개선 필요 사항',
-    '   - 공피치 해소 또는 인원 추가 투입 방안 검토 필요',
-    '   - 공피치 1:1 운영 시 정상 UPH 회복 가능',
-    '',
-    f'보고일: {DATE_STR}  |  생산팀',
-])
-
-prs.save(OUTPUT)
-print(f'저장 완료: {OUTPUT}')
-`;
-
-  const fname='generate_report_'+dateTag+'.py';
-  const blob=new Blob(['﻿'+pyScript],{type:'text/plain;charset=utf-8'});
+  // 다운로드
+  const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download=fname; a.click();
+  a.href=url; a.download=`컨베어_운영현황_보고_${dateTag}.pptx`; a.click();
   URL.revokeObjectURL(url);
-  _toast('보고서 생성기 다운로드: '+fname+'  (python으로 실행하세요)');
+  _toast('보고서 다운로드 완료!');
 }
 </script>
 </body>
