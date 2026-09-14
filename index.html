@@ -1432,7 +1432,7 @@ function openCTCalc3(i){
   const f=(r.ctFormula&&r.ctFormula._type==='line3')?r.ctFormula:{};
   const ids=['ctcMove3','ctcUnpack3','ctcDanpum','ctcHarness','ctcHook3','ctcBarcode3',
     'ctcDong','ctcAirbag','ctcNut','ctcScrew','ctcShex','ctcBhex',
-    'ctcWireSensor3','ctcWireClip3','ctcTestItem3','ctcTorque3',
+    'ctcWireSensor3','ctcWireClip3','ctcTestItem3','ctcTorque3','ctcBridge3',
     'ctcPadCnt3','ctcPadLen3','ctcBrktCnt3','ctcBrktHW3','ctcMldgCnt3','ctcMldgHW3'];
   ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value=f[id]!=null?f[id]:0;});
   document.getElementById('ctcBase3').value=f.ctcBase3||'0';
@@ -1469,6 +1469,8 @@ function calcCTC3(){
   const ti=v('ctcTestItem3'); if(ti) t+=3+1.5*ti;
   // 토크/임팩
   t+=v('ctcTorque3')*8;
+  // 브릿지 제거
+  t+=v('ctcBridge3')*2;
   // PAD
   const padType=document.getElementById('ctcPadType3')?.value;
   const pc=v('ctcPadCnt3'),pl=v('ctcPadLen3');
@@ -1488,7 +1490,7 @@ function calcCTC3(){
 function collectFormula3(){
   const ids=['ctcMove3','ctcUnpack3','ctcDanpum','ctcHarness','ctcHook3','ctcBarcode3',
     'ctcDong','ctcAirbag','ctcNut','ctcScrew','ctcShex','ctcBhex',
-    'ctcWireSensor3','ctcWireClip3','ctcTestItem3','ctcTorque3',
+    'ctcWireSensor3','ctcWireClip3','ctcTestItem3','ctcTorque3','ctcBridge3',
     'ctcPadCnt3','ctcPadLen3','ctcBrktCnt3','ctcBrktHW3','ctcMldgCnt3','ctcMldgHW3'];
   const f={_type:'line3'};
   ids.forEach(id=>{f[id]=+document.getElementById(id)?.value||0;});
@@ -2264,6 +2266,7 @@ const DIST_ITEMS=[
   {key:'ctcDong',     label:'동선',        unit:5,   type:'cnt'},
   {key:'ctcAirbag',   label:'에어백/CPAD', unit:10,  type:'cnt'},
   {key:'ctcTorque3',  label:'토크/임팩',   unit:8,   type:'cnt'},
+  {key:'ctcBridge3',  label:'브릿지제거',  unit:2,   type:'cnt'},
   {key:'ctcNut',      label:'너트',        unit:4.5, type:'cnt'},
   {key:'ctcScrew',    label:'스크류',      unit:4.5, type:'cnt'},
   {key:'ctcShex',     label:'S육각',       unit:4.5, type:'cnt'},
@@ -2326,6 +2329,7 @@ function _calcCTfromFormula(f,extra){
   if(ws||wc) t+=5+ws*3+wc*1.8;
   const ti=v('ctcTestItem3'); if(ti) t+=3+1.5*ti;
   t+=v('ctcTorque3')*8;
+  t+=v('ctcBridge3')*2;
   const pc=v('ctcPadCnt3');
   if(pc) t+=4+3*(pc-1);
   const bc=v('ctcBrktCnt3'),bhw=v('ctcBrktHW3');
@@ -3340,6 +3344,10 @@ window.addEventListener('message', e => {
         <div class="dname">토크/임팩 검증 <span style="color:var(--mut);font-size:12px">×8초</span></div>
         <input class="dadd" type="number" id="ctcTorque3" min="0" value="0" oninput="calcCTC3()">
       </div>
+      <div class="dist-row" style="border:none;padding:4px 0">
+        <div class="dname">브릿지 제거 <span style="color:var(--mut);font-size:12px">×2초</span></div>
+        <input class="dadd" type="number" id="ctcBridge3" min="0" value="0" oninput="calcCTC3()">
+      </div>
     </div>
 
     <div style="height:1px;background:var(--bd);margin:12px 0"></div>
@@ -3619,7 +3627,7 @@ function _calcRedistAnalysis(rows, base, wm){
   const formulaExtra=f=>{
     if(!f||f._type!=='line3') return null;
     const keys=['ctcMove3','ctcUnpack3','ctcDanpum','ctcHarness','ctcHook3','ctcBarcode3',
-      'ctcDong','ctcAirbag','ctcTorque3','ctcNut','ctcScrew','ctcShex','ctcBhex',
+      'ctcDong','ctcAirbag','ctcTorque3','ctcBridge3','ctcNut','ctcScrew','ctcShex','ctcBhex',
       'ctcWireSensor3','ctcWireClip3','ctcTestItem3','ctcPadCnt3','ctcPadLen3',
       'ctcBrktCnt3','ctcBrktHW3','ctcMldgCnt3','ctcMldgHW3'];
     const ex={};
