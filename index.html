@@ -3474,8 +3474,18 @@ window.addEventListener('message', e => {
   }
   let _saving=false;
   async function odSave(){
-    if(!dir||_saving)return;_saving=true;
-    try{const fh=await dir.getFileHandle(FILE,{create:true});const w=await fh.createWritable();await w.write(JSON.stringify(CONV_KEYS()));await w.close();}catch(e){}
+    if(!dir||_saving)return;
+    const data=CONV_KEYS();
+    // 빈 데이터로 기존 백업을 덮어쓰지 않는다 (데이터 소실 방지)
+    if(!Object.keys(data).length){
+      try{
+        const fh=await dir.getFileHandle(FILE);
+        const old=JSON.parse(await(await fh.getFile()).text());
+        if(old&&Object.keys(old).length){ console.warn('[od] 로컬이 비어 백업 유지'); return; }
+      }catch(e){}
+    }
+    _saving=true;
+    try{const fh=await dir.getFileHandle(FILE,{create:true});const w=await fh.createWritable();await w.write(JSON.stringify(data));await w.close();}catch(e){}
     _saving=false;
   }
   async function odLoad(){if(!dir)return null;try{const fh=await dir.getFileHandle(FILE);return JSON.parse(await(await fh.getFile()).text());}catch(e){return null;}}
